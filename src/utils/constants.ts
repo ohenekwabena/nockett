@@ -1,3 +1,5 @@
+import { IconlyActivity, IconlyLock, IconlyTicket, IconlyUnlock } from "@/components/icons";
+
 export const DUMMY_TICKETS = [
   {
     id: "clx123abc456",
@@ -8,6 +10,7 @@ export const DUMMY_TICKETS = [
     priority: "HIGH",
     status: "OPEN",
     assignee: {
+      id: "u456",
       name: "John Doe",
     },
     slaDueAt: new Date("2024-01-25"),
@@ -23,6 +26,7 @@ export const DUMMY_TICKETS = [
     priority: "MEDIUM",
     status: "IN_PROGRESS",
     assignee: {
+      id: "u123",
       name: "Sarah Wilson",
     },
     slaDueAt: new Date("2024-02-01"),
@@ -38,6 +42,7 @@ export const DUMMY_TICKETS = [
     priority: "HIGH",
     status: "IN_PROGRESS",
     assignee: {
+      id: "u456",
       name: "Mike Chen",
     },
     slaDueAt: new Date("2024-01-23"),
@@ -67,6 +72,7 @@ export const DUMMY_TICKETS = [
     priority: "MEDIUM",
     status: "CLOSED",
     assignee: {
+      id: "u789",
       name: "Emma Rodriguez",
     },
     slaDueAt: new Date("2024-01-22"),
@@ -74,3 +80,41 @@ export const DUMMY_TICKETS = [
     attachments: [{ id: "4", name: "email-logs.txt" }],
   },
 ];
+
+export const DUMMY_STATS = [
+  {
+    title: "Total Tickets",
+    value: 5,
+    iconType: "ticket" as const,
+    lightColor: "#3B82F6", // Blue
+    darkColor: "#60A5FA", // Light Blue
+  },
+  {
+    title: "Open Tickets",
+    value: 2,
+    iconType: "unlock" as const,
+    lightColor: "#10B981", // Green
+    darkColor: "#34D399", // Light Green
+  },
+  {
+    title: "In Progress",
+    value: 2,
+    iconType: "activity" as const,
+    lightColor: "#F59E0B", // Yellow
+    darkColor: "#FBBF24", // Light Yellow
+  },
+  {
+    title: "Closed Tickets",
+    value: 1,
+    iconType: "lock" as const,
+    lightColor: "#6B7280", // Gray
+    darkColor: "#9CA3AF", // Light Gray
+  },
+];
+
+export const ICON_MAP = {
+  ticket: IconlyTicket,
+  unlock: IconlyUnlock,
+  activity: IconlyActivity,
+  lock: IconlyLock,
+} as const;

@@ -17,8 +17,10 @@ interface TicketDetailsProps {
         };
         slaDueAt?: Date;
         createdAt: Date;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         attachments?: any[];
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSave: (ticketData: any) => void;
     onCancel: () => void;
     isEditing?: boolean;

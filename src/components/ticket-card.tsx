@@ -16,6 +16,7 @@ interface TicketCardProps {
         };
         slaDueAt?: Date;
         createdAt: Date;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         attachments?: any[];
     };
 }

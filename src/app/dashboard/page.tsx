@@ -1,64 +1,37 @@
-import { TicketCard } from "@/components/ticket-card";
-import { SideNav } from "@/components/layout/side-nav";
-import { DUMMY_TICKETS } from "@/utils/constants";
+import { DUMMY_TICKETS, DUMMY_STATS } from "@/utils/constants";
+import TicketCard from '@/components/ui/new-ticket-card'
+import { StatCard } from "@/components/stat-card";
 
 export default function Dashboard() {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <SideNav />
-
-            <div className="ml-28 p-6">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                        Dashboard
-                    </h1>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        Manage and track your support tickets
-                    </p>
-                </div>
-
-                <div className="mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                Open Tickets
-                            </h3>
-                            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                                {DUMMY_TICKETS.filter(t => t.status === 'OPEN').length}
-                            </p>
-                        </div>
-
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                In Progress
-                            </h3>
-                            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                                {DUMMY_TICKETS.filter(t => t.status === 'IN_PROGRESS').length}
-                            </p>
-                        </div>
-
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                High Priority
-                            </h3>
-                            <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-                                {DUMMY_TICKETS.filter(t => t.priority === 'HIGH').length}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                        Recent Tickets
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {DUMMY_TICKETS.map((ticket) => (
-                            <TicketCard key={ticket.id} ticket={ticket} />
-                        ))}
-                    </div>
-                </div>
+        <div className="pr-6 mt-10">
+            <h1 className="font-bold mb-4 text-gray-900 dark:text-gray-100" style={{
+                fontSize: "clamp(1.5rem, 12vw - 3.7rem, 3.75rem)"
+            }}>Dashboard</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                {DUMMY_STATS.map((stat, index) => (
+                    <StatCard
+                        key={index}
+                        title={stat.title}
+                        value={stat.value}
+                        iconType={stat.iconType}
+                        lightColor={stat.lightColor}
+                        darkColor={stat.darkColor}
+                    />
+                ))}
+            </div>
+            <h1 className="font-bold mb-4 mt-16 text-gray-900 dark:text-gray-100"
+                style={{
+                    fontSize: "clamp(1.5rem, 2.7vw + 0.3rem, 2rem)"
+                }}
+            >Recent tickets</h1>
+            <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+                {DUMMY_TICKETS.slice(0, 2).map((ticket) => (
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    <TicketCard key={ticket.id} ticket={ticket as any} />
+                ))}
             </div>
         </div>
     );
 }
+

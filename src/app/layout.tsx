@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { SideNav } from "@/components/layout/side-nav";
+import { ThemeProvider } from "@/components/ui/theme-provider";
+import { LayoutWrapper } from "@/components/layout-wrapper";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -20,15 +21,32 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const theme = localStorage.getItem('theme');
+                const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                const initialTheme = theme || systemTheme;
+                
+                if (initialTheme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${inter.variable} antialiased`}
       >
-        <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-900">
-          <SideNav />
-          {children}
-        </div>
+        <ThemeProvider>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
-

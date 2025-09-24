@@ -1,0 +1,15 @@
+export { IconlyCategory } from "./category";
+export { IconlyPlus } from "./plus";
+export { IconlyArrowRight2 } from "./arrow-right";
+export { IconlyEditSquare } from "./edit";
+export { IconlyUnlock } from "./unlock";
+export { IconlyActivity } from "./activity";
+export { IconlyLock } from "./locked";
+export { IconlyArrowDownSquare } from "./arrow-down";
+export { IconlyArrowUpCircle } from "./arrow-up";
+export { IconlyChart } from "./chart";
+export { IconlyLogout } from "./logout";
+export { IconlyMoon } from "./moon";
+export { IconlySetting } from "./settings";
+export { IconlySun } from "./sun";
+export { IconlyTicket } from "./ticket";

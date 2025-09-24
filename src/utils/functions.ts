@@ -23,13 +23,16 @@ export function slugToString(slug: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of each word
 }
 
-// function to format a date to a more readable format like "January 1, 2023"
-export function formatDate(date: Date) {
-  return date.toLocaleDateString("en-US", {
+// function to format a date to a more readable format like "January 1, 2023" including the time
+export function formatDate(date: string | Date) {
+  const options: Intl.DateTimeFormatOptions = {
     year: "numeric",
     month: "long",
     day: "numeric",
-  });
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+  return new Date(date).toLocaleDateString("en-US", options);
 }
 
 // function to format a number to a more readable format like 1,000,000
