@@ -13,7 +13,7 @@ interface SideNavContextType {
 const SideNavContext = createContext<SideNavContextType | undefined>(undefined);
 
 export function SideNavProvider({ children }: { children: ReactNode }) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     const toggleExpanded = () => {

@@ -3,7 +3,8 @@ import { useRouter } from "next/navigation";
 import { IconlyChart, IconlyLogout, IconlySetting, IconlyTicket, IconlyMoon, IconlySun } from "./icons";
 import { useTheme } from "./ui/theme-provider";
 import { useSideNav } from "@/context/useExpanded";
-import { Dialog, DialogContent } from "./ui/dialog";
+import { Drawer, DrawerClose, DrawerContent } from "./ui/drawer";
+import { X } from "lucide-react";
 
 export function MobileSidebar() {
     const router = useRouter();
@@ -16,12 +17,16 @@ export function MobileSidebar() {
     };
 
     return (
-        <Dialog open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-            <DialogContent className="fixed left-0 top-0 h-full w-64 max-w-none translate-x-0 translate-y-0 rounded-none border-0 p-0 sm:hidden data-[state=open]:slide-in-from-left-full data-[state=closed]:slide-out-to-left-full">
+        <Drawer open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen} direction="left">
+            <DrawerContent direction="left" className="sm:hidden border-0">
                 <div className="flex flex-col h-full p-4 bg-white dark:bg-gray-800">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
                         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">Menu</h2>
+                        <DrawerClose>
+                            <X className="text-gray-800 dark:text-gray-200" />
+                        </DrawerClose>
+
                     </div>
 
                     {/* Navigation Items */}
@@ -73,7 +78,7 @@ export function MobileSidebar() {
                         </div>
                     </div>
                 </div>
-            </DialogContent>
-        </Dialog>
+            </DrawerContent>
+        </Drawer>
     );
 }

@@ -217,7 +217,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create
                                 <Button
                                     onClick={() => onOpenChange(false)}
                                     variant="outline"
-                                    className="flex-1 dark:bg-gray-600 bg-gray-200 dark:text-gray-200 text-gray-800 hover:text-gray-800 hover:dark:text-gray-200 border-0 hover:bg-gray-300 hover:dark:bg-gray-500"
+                                    className="flex-1 dark:bg-gray-600 bg-gray-200 dark:text-gray-200 text-gray-800 hover:text-gray-800 active:text-gray-800 hover:dark:text-gray-200 border-0 hover:bg-gray-300 hover:dark:bg-gray-500"
                                 >
                                     Cancel
                                 </Button>
