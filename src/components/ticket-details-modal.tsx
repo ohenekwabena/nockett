@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { EqualSquareIcon } from "lucide-react";
 import { IconlyArrowDownSquare } from "./icons/arrow-down";
 import { IconlyArrowUpCircle } from "./icons/arrow-up";
-import { IconlyActivity, IconlyLock, IconlyUnlock } from "./icons";
+import { IconlyActivity, IconlyLock, IconlySetting, IconlyUnlock, IconlyInfoSquare, IconlyMoreCircle, IconlyGraph } from "./icons";
+import { GiSpottedBug } from "react-icons/gi";
 
 interface TicketModalProps {
     ticket: {
@@ -31,12 +32,18 @@ interface TicketModalProps {
 
 // Wrapper components to standardize icon interfaces
 const PriorityLowIcon = ({ color }: { color?: string }) => <IconlyArrowDownSquare color={color} />;
-const PriorityMediumIcon = ({ color }: { color?: string }) => <EqualSquareIcon color={color} size={16} />;
+const PriorityMediumIcon = ({ color, }: { color?: string }) => <EqualSquareIcon color={color} size={24} />;
 const PriorityHighIcon = ({ color }: { color?: string }) => <IconlyArrowUpCircle color={color} />;
 
 const StatusOpenIcon = ({ color }: { color?: string }) => <IconlyUnlock color={color} />;
 const StatusInProgressIcon = ({ color }: { color?: string }) => <IconlyActivity color={color} />;
 const StatusClosedIcon = ({ color }: { color?: string }) => <IconlyLock color={color} />;
+
+const CategoryFeatureIcon = ({ color }: { color?: string }) => <IconlyMoreCircle color={color} />;
+const CategoryBugIcon = ({ color }: { color?: string }) => <GiSpottedBug color={color} size={24} />;
+const CategorySupportIcon = ({ color }: { color?: string }) => <IconlyInfoSquare color={color} />;
+const CategoryMaintenanceIcon = ({ color }: { color?: string }) => <IconlySetting color={color} />;
+const CategoryPerformanceIcon = ({ color }: { color?: string }) => <IconlyGraph color={color} />;
 
 const PRIORITY_ICONS = {
     LOW: PriorityLowIcon,
@@ -50,6 +57,14 @@ const STATUS_ICONS = {
     CLOSED: StatusClosedIcon,
 };
 
+const CATEGORY_ICONS = {
+    BUG: CategoryBugIcon,
+    FEATURE: CategoryFeatureIcon,
+    SUPPORT: CategorySupportIcon,
+    MAINTENANCE: CategoryMaintenanceIcon,
+    PERFORMANCE: CategoryPerformanceIcon,
+};
+
 const PRIORITY_COLORS = {
     LOW: "#10B981", // Green
     MEDIUM: "#F59E0B", // Yellow
@@ -60,6 +75,14 @@ const STATUS_COLORS = {
     OPEN: "#3B82F6", // Blue
     IN_PROGRESS: "#FBBF24", // Yellow
     CLOSED: "#10B981", // Green
+};
+
+const CATEGORY_COLORS = {
+    BUG: "#EF4444", // Red
+    FEATURE: "#3B82F6", // Blue
+    SUPPORT: "#10B981", // Green
+    MAINTENANCE: "#F59E0B", // Yellow
+    PERFORMANCE: "#8B5CF6", // Purple
 };
 
 export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModalProps) {
@@ -78,7 +101,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                     <DialogTitle className="text-2xl sm:text-3xl dark:text-gray-200 text-gray-950">{ticket.title}</DialogTitle>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 mb-4">
                         {priority && (
-                            <div className="flex items-center space-x-2 bg-gray-200 dark:bg-gray-600 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
+                            <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                 <div className="flex items-center space-x-1">
                                     <PriorityIcon color={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS]} />
                                     <span>{capitalizeString(priority)}</span>
@@ -87,10 +110,18 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                             </div>
                         )}
                         {status && (
-                            <div className="flex items-center space-x-2 bg-gray-200 dark:bg-gray-600 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
+                            <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                 <div className="flex items-center space-x-1">
                                     <StatusIcon color={STATUS_COLORS[status as keyof typeof STATUS_COLORS]} />
                                     <span>{capitalizeString(status)}</span>
+                                </div>
+                            </div>
+                        )}
+                        {category && (
+                            <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
+                                <div className="flex items-center space-x-1">
+                                    {React.createElement(CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS], { color: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS] })}
+                                    <span>{capitalizeString(category)}</span>
                                 </div>
                             </div>
                         )}
@@ -121,7 +152,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
 
                         <h3 className="text-sm text-gray-400 dark:text-gray-500  font-semibold mt-6 mb-1 ">Assignee</h3>
                         <div className="flex items-center space-x-2">
-                            <Avatar className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-400 dark:bg-amber-300  text-gray-800 p-4">
+                            <Avatar className="w-10 h-10 bg-blue-500 dark:bg-blue-300 text-gray-200 dark:text-gray-800 p-4">
                                 <AvatarImage
                                     src=""
                                     alt="Assignee Avatar"
@@ -175,6 +206,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                                         <SelectItem value="FEATURE">Feature</SelectItem>
                                         <SelectItem value="SUPPORT">Support</SelectItem>
                                         <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                                        <SelectItem value="PERFORMANCE">Performance</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

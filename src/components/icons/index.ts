@@ -1,3 +1,6 @@
+export { IconlyGraph } from "./graph";
+export { IconlyInfoSquare } from "./info";
+export { IconlyMoreCircle } from "./more-circle";
 export { IconlyCategory } from "./category";
 export { IconlyPlus } from "./plus";
 export { IconlyArrowRight2 } from "./arrow-right";

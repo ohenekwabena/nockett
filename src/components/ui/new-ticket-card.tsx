@@ -52,7 +52,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
     return (
         <>
             <Card onClick={handleClick} className="w-full cursor-pointer bg-white dark:bg-gray-800 drop-shadow-xl  transition-drop-shadow drop-shadow-gray-200 dark:drop-shadow-gray-900  rounded-2xl hover:scale-[1.01] transition-all will-change-transform transform-gpu border border-transparent">
-                <CardHeader className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex-row items-center justify-between"
+                <CardHeader className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex-row items-start justify-between"
                     style={{
                         fontSize: "clamp(1rem, 1.1vw + 0.5rem, 1.2rem)"
                     }}
@@ -71,7 +71,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
                     <TooltipProvider>
                         <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
-                                <Avatar className="w-10 h-10 bg-amber-500 dark:bg-amber-300  text-gray-800 p-4">
+                                <Avatar className="w-10 h-10 bg-blue-500 dark:bg-blue-300 text-gray-200 dark:text-gray-800 p-4">
                                     <AvatarImage
                                         src=""
                                         alt="Assignee Avatar"
