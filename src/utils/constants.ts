@@ -1,4 +1,18 @@
-import { IconlyActivity, IconlyLock, IconlyTicket, IconlyUnlock } from "@/components/icons";
+import { EqualIcon } from "lucide-react";
+import {
+  IconlyActivity,
+  IconlyTicket,
+  IconlyArrowUpCircle,
+  IconlyArrowDownSquare,
+  IconlyLock,
+  IconlySetting,
+  IconlyUnlock,
+  IconlyInfoSquare,
+  IconlyMoreCircle,
+  IconlyGraph,
+  IconlyDocument,
+} from "./../components/icons";
+import { GiSpottedBug } from "react-icons/gi";
 
 export const DUMMY_TICKETS = [
   {
@@ -118,3 +132,49 @@ export const ICON_MAP = {
   activity: IconlyActivity,
   lock: IconlyLock,
 } as const;
+
+export const PRIORITY_ICONS = {
+  LOW: IconlyArrowDownSquare,
+  MEDIUM: EqualIcon,
+  HIGH: IconlyArrowUpCircle,
+};
+
+export const STATUS_ICONS = {
+  OPEN: IconlyUnlock,
+  IN_PROGRESS: IconlyActivity,
+  CLOSED: IconlyLock,
+};
+
+export const CATEGORY_ICONS = {
+  BUG: GiSpottedBug,
+  FEATURE: IconlyMoreCircle,
+  SUPPORT: IconlyInfoSquare,
+  MAINTENANCE: IconlySetting,
+  PERFORMANCE: IconlyGraph,
+  DOCUMENTATION: IconlyDocument,
+};
+
+export const PRIORITY_COLORS = {
+  LOW: "#10B981", // Green
+  MEDIUM: "#F59E0B", // Yellow
+  HIGH: "#EF4444", // Red
+};
+
+export const STATUS_COLORS = {
+  OPEN: "#3B82F6", // Blue
+  IN_PROGRESS: "#FBBF24", // Yellow
+  CLOSED: "#10B981", // Green
+};
+
+export const CATEGORY_COLORS = {
+  BUG: "#EF4444", // Red
+  FEATURE: "#3B82F6", // Blue
+  SUPPORT: "#10B981", // Green
+  MAINTENANCE: "#F59E0B", // Yellow
+  PERFORMANCE: "#8B5CF6", // Purple
+  DOCUMENTATION: "#7C3AED", // Teal
+};
+
+export const CATEGORIES = ["BUG", "FEATURE", "PERFORMANCE", "DOCUMENTATION", "SUPPORT", "MAINTENANCE"];
+export const PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
+export const STATUSES = ["OPEN", "IN_PROGRESS", "CLOSED"];

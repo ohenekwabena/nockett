@@ -16,3 +16,4 @@ export { IconlyMoon } from "./moon";
 export { IconlySetting } from "./settings";
 export { IconlySun } from "./sun";
 export { IconlyTicket } from "./ticket";
+export { IconlyDocument } from "./document";

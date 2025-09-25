@@ -3,11 +3,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import React, { useState } from "react";
 import { capitalizeString, formatDate } from "@/utils/functions";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { EqualSquareIcon } from "lucide-react";
-import { IconlyArrowDownSquare } from "./icons/arrow-down";
-import { IconlyArrowUpCircle } from "./icons/arrow-up";
-import { IconlyActivity, IconlyLock, IconlySetting, IconlyUnlock, IconlyInfoSquare, IconlyMoreCircle, IconlyGraph } from "./icons";
-import { GiSpottedBug } from "react-icons/gi";
+import {
+    PRIORITY_ICONS,
+    STATUS_ICONS,
+    CATEGORY_ICONS,
+    PRIORITY_COLORS,
+    STATUS_COLORS,
+    CATEGORY_COLORS,
+    PRIORITIES,
+    STATUSES,
+    CATEGORIES
+} from "@/utils/constants";
 
 interface TicketModalProps {
     ticket: {
@@ -30,61 +36,6 @@ interface TicketModalProps {
     isOpen?: boolean;
 }
 
-// Wrapper components to standardize icon interfaces
-const PriorityLowIcon = ({ color }: { color?: string }) => <IconlyArrowDownSquare color={color} />;
-const PriorityMediumIcon = ({ color, }: { color?: string }) => <EqualSquareIcon color={color} size={24} />;
-const PriorityHighIcon = ({ color }: { color?: string }) => <IconlyArrowUpCircle color={color} />;
-
-const StatusOpenIcon = ({ color }: { color?: string }) => <IconlyUnlock color={color} />;
-const StatusInProgressIcon = ({ color }: { color?: string }) => <IconlyActivity color={color} />;
-const StatusClosedIcon = ({ color }: { color?: string }) => <IconlyLock color={color} />;
-
-const CategoryFeatureIcon = ({ color }: { color?: string }) => <IconlyMoreCircle color={color} />;
-const CategoryBugIcon = ({ color }: { color?: string }) => <GiSpottedBug color={color} size={24} />;
-const CategorySupportIcon = ({ color }: { color?: string }) => <IconlyInfoSquare color={color} />;
-const CategoryMaintenanceIcon = ({ color }: { color?: string }) => <IconlySetting color={color} />;
-const CategoryPerformanceIcon = ({ color }: { color?: string }) => <IconlyGraph color={color} />;
-
-const PRIORITY_ICONS = {
-    LOW: PriorityLowIcon,
-    MEDIUM: PriorityMediumIcon,
-    HIGH: PriorityHighIcon,
-};
-
-const STATUS_ICONS = {
-    OPEN: StatusOpenIcon,
-    IN_PROGRESS: StatusInProgressIcon,
-    CLOSED: StatusClosedIcon,
-};
-
-const CATEGORY_ICONS = {
-    BUG: CategoryBugIcon,
-    FEATURE: CategoryFeatureIcon,
-    SUPPORT: CategorySupportIcon,
-    MAINTENANCE: CategoryMaintenanceIcon,
-    PERFORMANCE: CategoryPerformanceIcon,
-};
-
-const PRIORITY_COLORS = {
-    LOW: "#10B981", // Green
-    MEDIUM: "#F59E0B", // Yellow
-    HIGH: "#EF4444", // Red
-};
-
-const STATUS_COLORS = {
-    OPEN: "#3B82F6", // Blue
-    IN_PROGRESS: "#FBBF24", // Yellow
-    CLOSED: "#10B981", // Green
-};
-
-const CATEGORY_COLORS = {
-    BUG: "#EF4444", // Red
-    FEATURE: "#3B82F6", // Blue
-    SUPPORT: "#10B981", // Green
-    MAINTENANCE: "#F59E0B", // Yellow
-    PERFORMANCE: "#8B5CF6", // Purple
-};
-
 export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModalProps) {
     const [status, setStatus] = useState(ticket.status || "OPEN");
     const [priority, setPriority] = useState(ticket.priority || "LOW");
@@ -93,6 +44,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
 
     const PriorityIcon = PRIORITY_ICONS[priority as keyof typeof PRIORITY_ICONS];
     const StatusIcon = STATUS_ICONS[status as keyof typeof STATUS_ICONS];
+    const CategoryIcon = CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS];
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange} >
@@ -103,7 +55,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                         {priority && (
                             <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                 <div className="flex items-center space-x-1">
-                                    <PriorityIcon color={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS]} />
+                                    <PriorityIcon color={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS]} size={20} />
                                     <span>{capitalizeString(priority)}</span>
                                     <span>Priority</span>
                                 </div>
@@ -112,15 +64,15 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                         {status && (
                             <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                 <div className="flex items-center space-x-1">
-                                    <StatusIcon color={STATUS_COLORS[status as keyof typeof STATUS_COLORS]} />
+                                    <StatusIcon color={STATUS_COLORS[status as keyof typeof STATUS_COLORS]} size={20} />
                                     <span>{capitalizeString(status)}</span>
                                 </div>
                             </div>
                         )}
-                        {category && (
+                        {category && CategoryIcon && (
                             <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                 <div className="flex items-center space-x-1">
-                                    {React.createElement(CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS], { color: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS] })}
+                                    <CategoryIcon color={CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS]} size={20} />
                                     <span>{capitalizeString(category)}</span>
                                 </div>
                             </div>
@@ -174,9 +126,9 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                                         <SelectValue className="placeholder:text-gray-800 placeholder:dark:text-gray-200" />
                                     </SelectTrigger>
                                     <SelectContent className="dark:bg-gray-800 bg-gray-200 text-gray-800 dark:text-gray-200">
-                                        <SelectItem value="LOW">Low</SelectItem>
-                                        <SelectItem value="MEDIUM">Medium</SelectItem>
-                                        <SelectItem value="HIGH">High</SelectItem>
+                                        {PRIORITIES.map((p) => (
+                                            <SelectItem key={p} value={p}>{capitalizeString(p)}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -188,9 +140,9 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                                         <SelectValue className="placeholder:text-gray-800 placeholder:dark:text-gray-200" />
                                     </SelectTrigger>
                                     <SelectContent className="dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200">
-                                        <SelectItem value="OPEN">Open</SelectItem>
-                                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                                        <SelectItem value="CLOSED">Closed</SelectItem>
+                                        {STATUSES.map((s) => (
+                                            <SelectItem key={s} value={s}>{capitalizeString(s)}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -202,11 +154,9 @@ export default function TicketModal({ ticket, isOpen, onOpenChange }: TicketModa
                                         <SelectValue className="placeholder:text-gray-800 placeholder:dark:text-gray-200" />
                                     </SelectTrigger>
                                     <SelectContent className="dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200">
-                                        <SelectItem value="BUG">Bug</SelectItem>
-                                        <SelectItem value="FEATURE">Feature</SelectItem>
-                                        <SelectItem value="SUPPORT">Support</SelectItem>
-                                        <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                                        <SelectItem value="PERFORMANCE">Performance</SelectItem>
+                                        {CATEGORIES.map((c) => (
+                                            <SelectItem key={c} value={c}>{capitalizeString(c)}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
