@@ -26,7 +26,7 @@ export function StatCard({ title, value, iconType, lightColor, darkColor }: Stat
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</div>
+                <div className="text-4xl font-bold text-gray-900 dark:text-gray-100">{value}</div>
             </CardContent>
         </Card>
     );

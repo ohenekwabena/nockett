@@ -53,9 +53,6 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         <>
             <Card onClick={handleClick} className="w-full cursor-pointer bg-white dark:bg-gray-800 drop-shadow-xl  transition-drop-shadow drop-shadow-gray-200 dark:drop-shadow-gray-900  rounded-2xl hover:scale-[1.01] transition-all will-change-transform transform-gpu border border-transparent">
                 <CardHeader className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex-row items-start justify-between"
-                    style={{
-                        fontSize: "clamp(1rem, 1.1vw + 0.5rem, 1.2rem)"
-                    }}
                 >
                     {ticket.title}
                     <div>
@@ -63,7 +60,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
                     </div>
                 </CardHeader>
                 <CardContent className="">
-                    <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                    <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 text-base">
                         {ticket.description}
                     </p>
                 </CardContent>

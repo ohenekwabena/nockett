@@ -6,7 +6,7 @@ export default function Dashboard() {
     return (
         <div className="pr-6 mt-10">
             <h1 className="font-bold mb-4 text-gray-900 dark:text-gray-100" style={{
-                fontSize: "clamp(1.5rem, 12vw - 3.7rem, 3.75rem)"
+                fontSize: "clamp(2rem, 9.3vw - 2.1rem, 3.75rem)"
             }}>Dashboard</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 {DUMMY_STATS.map((stat, index) => (
