@@ -178,3 +178,194 @@ export const CATEGORY_COLORS = {
 export const CATEGORIES = ["BUG", "FEATURE", "PERFORMANCE", "DOCUMENTATION", "SUPPORT", "MAINTENANCE"];
 export const PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
 export const STATUSES = ["OPEN", "IN_PROGRESS", "CLOSED"];
+
+// Database Entity Constants
+export const TICKET_STATUSES = [
+  { id: "OPEN", name: "Open", color: "#3B82F6" },
+  { id: "IN_PROGRESS", name: "In Progress", color: "#FBBF24" },
+  { id: "PENDING", name: "Pending", color: "#F59E0B" },
+  { id: "RESOLVED", name: "Resolved", color: "#10B981" },
+  { id: "CLOSED", name: "Closed", color: "#6B7280" },
+  { id: "CANCELLED", name: "Cancelled", color: "#EF4444" },
+] as const;
+
+export const DEFAULT_TICKET_CATEGORIES = [
+  { name: "Bug Report" },
+  { name: "Feature Request" },
+  { name: "Technical Support" },
+  { name: "Hardware Issue" },
+  { name: "Software Issue" },
+  { name: "Network Problem" },
+  { name: "Performance Issue" },
+  { name: "Security Incident" },
+  { name: "Documentation" },
+  { name: "Maintenance" },
+  { name: "Training Request" },
+  { name: "Access Request" },
+] as const;
+
+export const DEFAULT_TICKET_PRIORITIES = [
+  { name: "Low", color: "#10B981" },
+  { name: "Medium", color: "#F59E0B" },
+  { name: "High", color: "#EF4444" },
+  { name: "Critical", color: "#DC2626" },
+  { name: "Urgent", color: "#991B1B" },
+] as const;
+
+export const DEFAULT_DEPARTMENTS = [
+  { name: "Information Technology" },
+  { name: "Human Resources" },
+  { name: "Finance" },
+  { name: "Marketing" },
+  { name: "Sales" },
+  { name: "Operations" },
+  { name: "Customer Support" },
+  { name: "Legal" },
+  { name: "Research & Development" },
+  { name: "Quality Assurance" },
+  { name: "Administration" },
+  { name: "Security" },
+] as const;
+
+export const DEFAULT_ROLES = [
+  { name: "Admin" },
+  { name: "Manager" },
+  { name: "Technician" },
+  { name: "Support Agent" },
+  { name: "End User" },
+  { name: "Supervisor" },
+  { name: "Analyst" },
+  { name: "Specialist" },
+  { name: "Coordinator" },
+  { name: "Observer" },
+] as const;
+
+export const DEFAULT_ASSIGNEES = [
+  { name: "John Doe" },
+  { name: "Sarah Wilson" },
+  { name: "Mike Chen" },
+  { name: "Emma Rodriguez" },
+  { name: "David Kumar" },
+  { name: "Lisa Thompson" },
+  { name: "James Brown" },
+  { name: "Maria Garcia" },
+  { name: "Robert Johnson" },
+  { name: "Jennifer Davis" },
+] as const;
+
+// Ticket History Actions
+export const TICKET_HISTORY_ACTIONS = {
+  CREATED: "created",
+  UPDATED: "updated",
+  STATUS_CHANGED: "status_changed",
+  PRIORITY_CHANGED: "priority_changed",
+  ASSIGNED: "assigned",
+  UNASSIGNED: "unassigned",
+  COMMENT_ADDED: "comment_added",
+  NOTE_ADDED: "note_added",
+  ATTACHMENT_ADDED: "attachment_added",
+  ATTACHMENT_REMOVED: "attachment_removed",
+  CATEGORY_CHANGED: "category_changed",
+  CLOSED: "closed",
+  REOPENED: "reopened",
+  SLA_BREACHED: "sla_breached",
+  ESCALATED: "escalated",
+} as const;
+
+// Knowledge Base Tags
+export const DEFAULT_KB_TAGS = [
+  "troubleshooting",
+  "setup",
+  "configuration",
+  "bug-fix",
+  "workaround",
+  "hardware",
+  "software",
+  "network",
+  "security",
+  "performance",
+  "maintenance",
+  "upgrade",
+  "installation",
+  "documentation",
+  "tutorial",
+  "faq",
+  "best-practices",
+  "common-issues",
+] as const;
+
+// File Upload Constants
+export const ALLOWED_FILE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "application/pdf",
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/zip",
+  "application/x-zip-compressed",
+] as const;
+
+export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+export const FILE_TYPE_ICONS = {
+  "image/jpeg": "🖼️",
+  "image/png": "🖼️",
+  "image/gif": "🖼️",
+  "application/pdf": "📄",
+  "text/plain": "📝",
+  "application/msword": "📄",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "📄",
+  "application/vnd.ms-excel": "📊",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "📊",
+  "application/zip": "🗜️",
+  "application/x-zip-compressed": "🗜️",
+  default: "📎",
+} as const;
+
+// SLA Timer Constants (in hours)
+export const SLA_TIMERS = {
+  LOW: 72, // 3 days
+  MEDIUM: 48, // 2 days
+  HIGH: 24, // 1 day
+  CRITICAL: 8, // 8 hours
+  URGENT: 4, // 4 hours
+} as const;
+
+// Pagination Constants
+export const PAGINATION = {
+  DEFAULT_PAGE_SIZE: 10,
+  PAGE_SIZE_OPTIONS: [5, 10, 20, 50, 100],
+} as const;
+
+// Search Constants
+export const SEARCH_FILTERS = {
+  ALL: "all",
+  TITLE: "title",
+  DESCRIPTION: "description",
+  TICKET_ID: "ticket_id",
+  ASSIGNEE: "assignee",
+  CREATOR: "creator",
+} as const;
+
+// Date Format Constants
+export const DATE_FORMATS = {
+  DISPLAY: "MMM DD, YYYY",
+  DISPLAY_WITH_TIME: "MMM DD, YYYY HH:mm",
+  ISO: "YYYY-MM-DDTHH:mm:ss.SSSZ",
+  SHORT: "MM/DD/YYYY",
+} as const;
+
+// Notification Types
+export const NOTIFICATION_TYPES = {
+  TICKET_CREATED: "ticket_created",
+  TICKET_UPDATED: "ticket_updated",
+  TICKET_ASSIGNED: "ticket_assigned",
+  TICKET_CLOSED: "ticket_closed",
+  COMMENT_ADDED: "comment_added",
+  SLA_BREACH_WARNING: "sla_breach_warning",
+  SLA_BREACHED: "sla_breached",
+} as const;

@@ -1,11 +1,12 @@
 "use client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Button } from "./ui/button";
-import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { Button } from "../ui/button";
+import React, { useState, useEffect } from "react";
 import { capitalizeString } from "@/utils/functions";
+import { ticketService, type TicketCategory, type TicketPriority, type Assignee } from "@/services/ticket-service";
 import {
     PRIORITY_ICONS,
     STATUS_ICONS,
@@ -13,16 +14,16 @@ import {
     PRIORITY_COLORS,
     STATUS_COLORS,
     CATEGORY_COLORS,
-    PRIORITIES,
-    STATUSES,
-    CATEGORIES
+    STATUSES
 } from "@/utils/constants";
 
 interface CreateTicketModalProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
+    onTicketCreated: () => void;
     mode?: "create" | "edit";
     ticket?: {
+        id?: string;
         title: string;
         description: string;
         category?: string;
@@ -33,35 +34,121 @@ interface CreateTicketModalProps {
             name: string | undefined;
             avatarUrl?: string;
         };
-        id?: string;
     };
 }
 
+export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreated, mode = "create", ticket }: CreateTicketModalProps) {
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [status, setStatus] = useState("OPEN");
+    const [priority, setPriority] = useState("LOW");
+    const [category, setCategory] = useState("");
+    const [assigneeId, setAssigneeId] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create", ticket }: CreateTicketModalProps) {
-    const [title, setTitle] = useState(ticket?.title || "");
-    const [description, setDescription] = useState(ticket?.description || "");
-    const [status, setStatus] = useState(ticket?.status || "OPEN");
-    const [priority, setPriority] = useState(ticket?.priority || "LOW");
-    const [category, setCategory] = useState(ticket?.category || "FEATURE");
-    const [assignee, setAssignee] = useState(ticket?.assignee?.name || "unassigned");
+    // Data for dropdowns
+    const [categories, setCategories] = useState<TicketCategory[]>([]);
+    const [priorities, setPriorities] = useState<TicketPriority[]>([]);
+    const [assignees, setAssignees] = useState<Assignee[]>([]);
 
-    const handleSubmit = () => {
-        // Handle form submission logic here
-        console.log({
-            title,
-            description,
-            status,
-            priority,
-            category,
-            assignee: assignee === "unassigned" ? null : assignee
-        });
-        onOpenChange(false);
+    useEffect(() => {
+        if (isOpen) {
+            loadDropdownData();
+        }
+    }, [isOpen]);
+
+    // New useEffect to handle ticket data population for edit mode
+    useEffect(() => {
+        if (isOpen && mode === "edit" && ticket) {
+            setTitle(ticket.title || "");
+            setDescription(ticket.description || "");
+            setStatus(ticket.status || "OPEN");
+            setPriority(ticket.priority || "LOW");
+            setCategory(ticket.category || "");
+            setAssigneeId(ticket.assignee?.id || "");
+            setError(null);
+        } else if (isOpen && mode === "create") {
+            // Reset form for create mode
+            setTitle("");
+            setDescription("");
+            setStatus("OPEN");
+            setPriority("LOW");
+            setCategory("");
+            setAssigneeId("");
+            setError(null);
+        }
+    }, [isOpen, mode, ticket]);
+
+    const loadDropdownData = async () => {
+        try {
+            const [categoriesRes, prioritiesRes, assigneesRes] = await Promise.all([
+                ticketService.getTicketCategories(),
+                ticketService.getTicketPriorities(),
+                ticketService.getAssignees()
+            ]);
+
+            if (categoriesRes.data) setCategories(categoriesRes.data);
+            if (prioritiesRes.data) setPriorities(prioritiesRes.data);
+            if (assigneesRes.data) setAssignees(assigneesRes.data);
+        } catch (err) {
+            console.error("Error loading dropdown data:", err);
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!title.trim()) {
+            setError("Title is required");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const priorityObj = priorities.find(p => p.name.toUpperCase() === priority);
+            const categoryObj = categories.find(c => c.name.toUpperCase() === category);
+
+            const ticketData = {
+                title: title.trim(),
+                description: description.trim(),
+                status,
+                priority_id: priorityObj?.id,
+                category_id: categoryObj?.id,
+                assignee_id: assigneeId && assigneeId !== "unassigned" ? parseInt(assigneeId) : undefined,
+            };
+
+            let result;
+            if (mode === "create") {
+                result = await ticketService.createTicket(ticketData);
+            } else {
+                result = await ticketService.updateTicket(ticket?.id!, ticketData);
+            }
+
+            if (result.error) {
+                setError(result.error.message);
+            } else {
+                onTicketCreated();
+                // Only reset form if it's create mode
+                if (mode === "create") {
+                    setTitle("");
+                    setDescription("");
+                    setStatus("OPEN");
+                    setPriority("LOW");
+                    setCategory("");
+                    setAssigneeId("");
+                }
+            }
+        } catch (err) {
+            setError("An unexpected error occurred");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const PriorityIcon = PRIORITY_ICONS[priority as keyof typeof PRIORITY_ICONS];
     const StatusIcon = STATUS_ICONS[status as keyof typeof STATUS_ICONS];
-    const CategoryIcon = CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS];
+    const CategoryIcon = category ? CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] : null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -98,6 +185,13 @@ export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create
                         )}
                     </div>
                 </DialogHeader>
+
+                {error && (
+                    <div className="mx-4 sm:mx-6 p-3 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-md text-sm">
+                        {error}
+                    </div>
+                )}
+
                 <div className="space-y-4 flex flex-col lg:flex-row">
                     <div className="px-4 sm:px-6 flex-1">
                         <h3 className="text-sm text-gray-400 dark:text-gray-500 font-semibold mb-2">Ticket Details</h3>
@@ -105,7 +199,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create
                         <div className="space-y-4">
                             <div>
                                 <label className="text-sm font-semibold dark:text-gray-400 text-gray-600 block mb-1">
-                                    Title
+                                    Title *
                                 </label>
                                 <Input
                                     value={title}
@@ -139,8 +233,8 @@ export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="dark:bg-gray-800 bg-gray-200 text-gray-800 dark:text-gray-200">
-                                        {PRIORITIES.map((p) => (
-                                            <SelectItem key={p} value={p}>{capitalizeString(p)}</SelectItem>
+                                        {priorities.map((p) => (
+                                            <SelectItem key={p.id} value={p.name.toUpperCase()}>{capitalizeString(p.name)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -164,11 +258,11 @@ export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create
                                 <span className="font-semibold dark:text-gray-400 text-gray-600 sm:min-w-[80px]">Category</span>
                                 <Select value={category} onValueChange={setCategory}>
                                     <SelectTrigger className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 focus:ring-0">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
                                     <SelectContent className="dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200">
-                                        {CATEGORIES.map((c) => (
-                                            <SelectItem key={c} value={c}>{capitalizeString(c)}</SelectItem>
+                                        {categories.map((c) => (
+                                            <SelectItem key={c.id} value={c.name.toUpperCase()}>{capitalizeString(c.name)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -176,16 +270,15 @@ export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create
 
                             <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                                 <span className="font-semibold dark:text-gray-400 text-gray-600 sm:min-w-[80px]">Assignee</span>
-                                <Select value={assignee} onValueChange={setAssignee}>
+                                <Select value={assigneeId || "unassigned"} onValueChange={(value) => setAssigneeId(value === "unassigned" ? "" : value)}>
                                     <SelectTrigger className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 focus:ring-0">
                                         <SelectValue placeholder="Select assignee" />
                                     </SelectTrigger>
                                     <SelectContent className="dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200">
-                                        <SelectItem value="John Doe">John Doe</SelectItem>
-                                        <SelectItem value="Jane Smith">Jane Smith</SelectItem>
-                                        <SelectItem value="Mike Johnson">Mike Johnson</SelectItem>
-                                        <SelectItem value="Sarah Wilson">Sarah Wilson</SelectItem>
                                         <SelectItem value="unassigned">Unassigned</SelectItem>
+                                        {assignees.map((a) => (
+                                            <SelectItem key={a.id} value={a.id.toString()}>{a.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -193,13 +286,15 @@ export default function CreateTicketModal({ isOpen, onOpenChange, mode = "create
                             <div className="flex flex-col sm:flex-row gap-2 mt-6">
                                 <Button
                                     onClick={handleSubmit}
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                    disabled={loading || !title.trim()}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                                 >
-                                    {mode === "create" ? "Create Ticket" : "Save Changes"}
+                                    {loading ? "Saving..." : (mode === "create" ? "Create Ticket" : "Save Changes")}
                                 </Button>
                                 <Button
                                     onClick={() => onOpenChange(false)}
                                     variant="outline"
+                                    disabled={loading}
                                     className="flex-1 dark:bg-gray-600 bg-gray-200 dark:text-gray-200 text-gray-800 hover:text-gray-800 active:text-gray-800 hover:dark:text-gray-200 border-0 hover:bg-gray-300 hover:dark:bg-gray-500"
                                 >
                                     Cancel

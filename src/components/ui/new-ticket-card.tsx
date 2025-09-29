@@ -4,64 +4,71 @@ import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
 import { Card, CardContent, CardFooter, CardHeader } from "./card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
-import { FlagIcon, } from "lucide-react";
-import TicketModal from "../ticket-details-modal";
+import { FlagIcon } from "lucide-react";
+import TicketModal from "../modals/ticket-details-modal";
 import { useState } from "react";
 
 
 interface TicketCardProps {
-    ticket: {
-        title: string;
-        description: string;
-        category?: string;
-        priority?: "LOW" | "MEDIUM" | "HIGH";
-        status?: "OPEN" | "IN_PROGRESS" | "CLOSED";
-        createdAt?: Date;
-        updatedAt?: Date;
-        assignee?: {
-            id: string | undefined;
-            name: string | undefined;
-            avatarUrl?: string;
-        };
-        slaDueAt?: Date;
-        id?: string;
-    };
+    ticket: any; // Update to handle the joined data structure
+    onTicketUpdated: () => void;
 }
 
-// const priorityColors = {
-//     LOW: "bg-green-100 text-green-800",
-//     MEDIUM: "bg-yellow-100 text-yellow-800",
-//     HIGH: "bg-red-100 text-red-800",
-// };
-
 const statusColors = {
-    OPEN: "bg-emerald-100 text-emerald-800",
-    IN_PROGRESS: "bg-yellow-100 text-yellow-800",
-    CLOSED: "bg-gray-100 text-gray-800",
+    OPEN: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+    IN_PROGRESS: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    CLOSED: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
 };
 
-export default function TicketCard({ ticket }: TicketCardProps) {
-
+export default function TicketCard({ ticket, onTicketUpdated }: TicketCardProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // Extract the related data from the joined query - handle both array and object formats
+    const priority = Array.isArray(ticket.ticket_priorities)
+        ? ticket.ticket_priorities[0]?.name || ""
+        : ticket.ticket_priorities?.name || "";
+
+    const category = Array.isArray(ticket.ticket_categories)
+        ? ticket.ticket_categories[0]?.name || ""
+        : ticket.ticket_categories?.name || "";
+
+    const assignee = Array.isArray(ticket.assignee)
+        ? ticket.assignee[0] || null
+        : ticket.assignee || null;
+
+    const creator = Array.isArray(ticket.users)
+        ? ticket.users[0] || null
+        : ticket.users || null;
 
     const handleClick = () => {
         setIsModalOpen(!isModalOpen);
-    }
+    };
+
+    const getStatusColor = (status: string) => {
+        return statusColors[status as keyof typeof statusColors] || statusColors.OPEN;
+    };
+
+    const shouldShowHighPriorityFlag = priority?.toUpperCase() === "HIGH";
 
     return (
         <>
-            <Card onClick={handleClick} className="w-full cursor-pointer bg-white dark:bg-gray-800 drop-shadow-xl  transition-drop-shadow drop-shadow-gray-200 dark:drop-shadow-gray-900  rounded-2xl hover:scale-[1.01] transition-all will-change-transform transform-gpu border border-transparent">
-                <CardHeader className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex-row items-start justify-between"
-                >
-                    {ticket.title}
-                    <div>
-                        <Badge className={`ml-2 ${statusColors[ticket.status || "IN_PROGRESS"]} text-nowrap`} variant="secondary">{capitalizeString(ticket.status || "")}</Badge>
+            <Card onClick={handleClick} className="w-full cursor-pointer bg-white dark:bg-gray-800 drop-shadow-xl transition-drop-shadow drop-shadow-gray-200 dark:drop-shadow-gray-900 rounded-2xl hover:scale-[1.01] transition-all will-change-transform transform-gpu border border-transparent">
+                <CardHeader className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex-row items-start justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
+                            #{ticket.id?.slice(-8) || 'N/A'}
+                        </span>
+                        <span>{ticket.title}</span>
+                    </div>
+                    <div className="w-fit">
+                        <Badge className={`ml-2 ${getStatusColor(ticket.status)} text-nowrap inline-block`} variant="secondary">
+                            {capitalizeString(ticket.status || "")}
+                        </Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="">
                     <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 text-base">
-                        {ticket.description}
+                        {ticket.description || "No description provided"}
                     </p>
                 </CardContent>
                 <CardFooter>
@@ -69,33 +76,45 @@ export default function TicketCard({ ticket }: TicketCardProps) {
                         <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
                                 <Avatar className="w-10 h-10 bg-blue-500 dark:bg-blue-300 text-gray-200 dark:text-gray-800 p-4">
-                                    <AvatarImage
-                                        src=""
-                                        alt="Assignee Avatar"
-                                    />
+                                    <AvatarImage src="" alt="Assignee Avatar" />
                                     <AvatarFallback className="text-sm font-medium">
-                                        {ticket.assignee?.name ? ticket.assignee.name.split(' ').map(n => n[0]).join('') : 'A'}
+                                        {assignee?.name ? assignee.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
                                     </AvatarFallback>
                                 </Avatar>
                             </TooltipTrigger>
                             <TooltipContent className="bg-gray-800 text-gray-100 *:text-sm">
-                                {ticket.assignee?.name || 'Unassigned'}
+                                {assignee?.name || 'Unassigned'}
                             </TooltipContent>
                         </Tooltip>
                         <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
-                                {ticket.priority && (
-                                    <FlagIcon className={`ml-auto ${ticket.priority === "HIGH" ? "text-red-600 dark:text-red-500" : "hidden"}`} size={20} />
+                                {shouldShowHighPriorityFlag && (
+                                    <FlagIcon className="ml-auto text-red-600 dark:text-red-500" size={20} />
                                 )}
                             </TooltipTrigger>
                             <TooltipContent className="bg-gray-800 text-gray-100 *:text-sm">
-                                Priority
+                                High Priority
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </CardFooter>
             </Card>
-            <TicketModal ticket={ticket} isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
+            <TicketModal
+                ticket={{
+                    ...ticket,
+                    status: ticket.status as "OPEN" | "IN_PROGRESS" | "CLOSED",
+                    description: ticket.description || "",
+                    priority: (priority?.toUpperCase() as "HIGH" | "LOW" | "MEDIUM" | undefined),
+                    category: category?.toUpperCase(),
+                    assignee: assignee ? { id: assignee.id.toString(), name: assignee.name } : undefined,
+                    creator: creator ? { id: creator.id, name: creator.name } : undefined,
+                    createdAt: ticket.created_at ? new Date(ticket.created_at) : undefined,
+                    updatedAt: ticket.updated_at ? new Date(ticket.updated_at) : undefined,
+                }}
+                isOpen={isModalOpen}
+                onOpenChange={setIsModalOpen}
+                onTicketUpdated={onTicketUpdated}
+            />
         </>
     );
 }

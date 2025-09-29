@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { IconlyChart, IconlyLogout, IconlySetting, IconlyTicket, IconlyMoon, IconlySun } from "./icons";
 import { useTheme } from "./ui/theme-provider";
-import { useSideNav } from "@/context/useExpanded";
+import { useSideNav } from "@/hooks/use-expanded";
 import { Drawer, DrawerClose, DrawerContent } from "./ui/drawer";
 import { X } from "lucide-react";
 

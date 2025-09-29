@@ -1,42 +1,97 @@
 "use client";
 
-import { useState } from "react";
-import { DUMMY_TICKETS } from "@/utils/constants";
+import { useState, useEffect } from "react";
 import TicketCard from "@/components/ui/new-ticket-card";
+import { ticketService, type Ticket } from "@/services/ticket-service";
+import { TicketsPageSkeleton } from "@/components/skeletons/tickets-page-skeleton";
 
 export default function TicketsPage() {
     const [currentPage, setCurrentPage] = useState(1);
+    const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const ticketsPerPage = 10;
 
-    const totalPages = Math.ceil(DUMMY_TICKETS.length / ticketsPerPage);
+    useEffect(() => {
+        loadTickets();
+
+        // Listen for ticket creation events from the layout wrapper
+        const handleTicketCreated = () => {
+            loadTickets();
+        };
+
+        window.addEventListener('ticketCreated', handleTicketCreated);
+
+        return () => {
+            window.removeEventListener('ticketCreated', handleTicketCreated);
+        };
+    }, []);
+
+    const loadTickets = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await ticketService.getTicketsWithDetails();
+            if (error) {
+                setError(error.message);
+            } else {
+                setTickets(data || []);
+            }
+        } catch (err) {
+            setError('Failed to load tickets');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const totalPages = Math.ceil(tickets.length / ticketsPerPage);
     const startIndex = (currentPage - 1) * ticketsPerPage;
     const endIndex = startIndex + ticketsPerPage;
-    const currentTickets = DUMMY_TICKETS.slice(startIndex, endIndex);
+    const currentTickets = tickets.slice(startIndex, endIndex);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
     };
 
+    if (loading) {
+        return <TicketsPageSkeleton />;
+    }
+
+    if (error) {
+        return (
+            <div className="pr-6 mt-10 flex justify-center items-center h-64">
+                <div className="text-red-600 dark:text-red-400">Error: {error}</div>
+            </div>
+        );
+    }
+
     return (
         <div className="pr-6 mt-10">
             <div className="mb-8">
                 <h1 className="text-6xl font-bold text-gray-900 dark:text-white mb-2" style={{
-                    fontSize: "clamp(1.5rem, 12vw - 3.7rem, 3.75rem)"
+                    fontSize: "clamp(2rem, 9.3vw - 2.1rem, 3.75rem)"
                 }}>
                     Tickets
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                    Showing {startIndex + 1}-{Math.min(endIndex, DUMMY_TICKETS.length)} of{" "}
-                    {DUMMY_TICKETS.length} tickets
+                    Showing {startIndex + 1}-{Math.min(endIndex, tickets.length)} of{" "}
+                    {tickets.length} tickets
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 mb-8">
                 {currentTickets.map((ticket) => (
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    <TicketCard key={ticket.id} ticket={ticket as any} />
+                    <TicketCard key={ticket.id} ticket={ticket} onTicketUpdated={loadTickets} />
                 ))}
             </div>
+
+            {tickets.length === 0 && (
+                <div className="text-center py-12">
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
+                    <p className="text-gray-500 dark:text-gray-500 text-sm">
+                        Click the "Add New" button in the top right to create your first ticket
+                    </p>
+                </div>
+            )}
 
             {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2">
@@ -73,4 +128,3 @@ export default function TicketsPage() {
         </div>
     );
 }
-

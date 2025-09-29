@@ -1,3 +1,6 @@
+export { IconlyDelete } from "./delete";
+export { IconlyMoreSquare } from "./more-square";
+export { IconlyUser } from "./user";
 export { IconlyGraph } from "./graph";
 export { IconlyInfoSquare } from "./info";
 export { IconlyMoreCircle } from "./more-circle";
