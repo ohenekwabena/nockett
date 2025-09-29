@@ -1,6 +1,6 @@
 "use client";
 import { capitalizeString } from "@/utils/functions";
-import { IconlyTicket } from "./icons/ticket";
+import { IconlyTicket } from "../icons";
 import { useRouter } from "next/navigation";
 
 interface TicketCardProps {

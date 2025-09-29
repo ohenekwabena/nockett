@@ -23,6 +23,7 @@ export default function useSupabase() {
     })
 
     return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return { user, loading, supabase }

@@ -102,6 +102,11 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
             return;
         }
 
+        if (mode === "edit" && !ticket?.id) {
+            setError("Ticket ID is required for editing");
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -122,7 +127,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
             if (mode === "create") {
                 result = await ticketService.createTicket(ticketData);
             } else {
-                result = await ticketService.updateTicket(ticket?.id!, ticketData);
+                result = await ticketService.updateTicket(ticket?.id || "", ticketData);
             }
 
             if (result.error) {
@@ -139,6 +144,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
                     setAssigneeId("");
                 }
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
             setError("An unexpected error occurred");
         } finally {

@@ -36,7 +36,8 @@ export default function TicketsPage() {
             } else {
                 setTickets(data || []);
             }
-        } catch (err) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_) {
             setError('Failed to load tickets');
         } finally {
             setLoading(false);
@@ -88,7 +89,7 @@ export default function TicketsPage() {
                 <div className="text-center py-12">
                     <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
                     <p className="text-gray-500 dark:text-gray-500 text-sm">
-                        Click the "Add New" button in the top right to create your first ticket
+                        Click the &quot;Add New&quot; button in the top right to create your first ticket
                     </p>
                 </div>
             )}

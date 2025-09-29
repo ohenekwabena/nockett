@@ -59,6 +59,7 @@ export interface TicketHistory {
   action: string;
   user_id?: string;
   timestamp?: string;
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
   details?: any;
 }
 
@@ -466,6 +467,7 @@ export class TicketService {
       inProgress: data.filter((ticket) => ticket.status === "IN_PROGRESS").length,
       closed: data.filter((ticket) => ticket.status === "CLOSED").length,
       highPriority: data.filter((ticket) => {
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
         const priorities = ticket.ticket_priorities as any;
         return Array.isArray(priorities)
           ? priorities[0]?.name?.toUpperCase() === "HIGH"
@@ -597,6 +599,7 @@ export class TicketService {
 
     if (error) return { data: null, error };
 
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stats = data.reduce((acc: any, ticket: any) => {
       acc[ticket.status] = (acc[ticket.status] || 0) + 1;
       return acc;

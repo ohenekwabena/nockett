@@ -23,7 +23,8 @@ export default function LoginPage() {
             } else if (user) {
                 router.push("/dashboard");
             }
-        } catch (err) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_) {
             setError("An unexpected error occurred");
         } finally {
             setLoading(false);

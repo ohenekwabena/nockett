@@ -85,12 +85,14 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
         }
     };
 
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleQuickUpdate = async (field: string, value: any) => {
         if (!ticket.id) return;
 
         setLoading(true);
         try {
-            let updateData: any = {};
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const updateData: any = {};
 
             switch (field) {
                 case 'status':

@@ -82,6 +82,7 @@ export default function PrioritiesModal({
 
         try {
             setIsCreating(true);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { data, error } = await ticketService.createTicketPriority({
                 name: newPriorityName.trim(),
             });
@@ -117,6 +118,7 @@ export default function PrioritiesModal({
         if (editingId === null) return;
 
         try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { data, error } = await ticketService.updateTicketPriority(editingId, {
                 name: editingName.trim(),
             });

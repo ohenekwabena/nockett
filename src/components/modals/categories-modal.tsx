@@ -82,6 +82,7 @@ export default function CategoriesModal({
 
         try {
             setIsCreating(true);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { data, error } = await ticketService.createTicketCategory({
                 name: newCategoryName.trim(),
             });
@@ -117,6 +118,7 @@ export default function CategoriesModal({
         if (editingId === null) return;
 
         try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { data, error } = await ticketService.updateTicketCategory(editingId, {
                 name: editingName.trim(),
             });

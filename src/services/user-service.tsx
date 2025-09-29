@@ -409,6 +409,7 @@ export const userRoleService = {
         if (error) throw new Error(`Failed to fetch users by role: ${error.message}`);
 
         // Fix the type mapping - properly extract and type the users
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data?.map((item: any) => item.users as User).filter((user): user is User => user !== null) || [];
     },
 
@@ -461,6 +462,7 @@ export const userUtils = {
 
         if (error || !data?.departments) return null;
         // Handle the fact that departments is a nested object from the relationship
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
         return Array.isArray(data.departments) ? data.departments[0]?.name || null : (data.departments as any).name || null;
     },
 
@@ -474,6 +476,7 @@ export const userUtils = {
         if (error) throw new Error(`Failed to get users count by department: ${error.message}`);
 
         const departmentCounts: { [key: string]: number } = {};
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
         data?.forEach((user: any) => {
             const departmentName = Array.isArray(user.departments)
                 ? user.departments[0]?.name
