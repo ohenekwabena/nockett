@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { IconlyChart, IconlyLogout, IconlySetting, IconlyTicket, IconlyMoon, IconlySun } from "./icons";
+import { IconlyChart, IconlyLogout, IconlySetting, IconlyTicket, IconlyMoon, IconlySun, IconlyMoreSquare } from "./icons";
 import { useTheme } from "./ui/theme-provider";
 import { useSideNav } from "@/hooks/use-expanded";
 import { Drawer, DrawerClose, DrawerContent } from "./ui/drawer";
@@ -49,7 +49,14 @@ export function MobileSidebar() {
 
                         <div
                             className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                            onClick={() => handlePageRoute('/settings')}
+                            onClick={() => handlePageRoute('/entities')}
+                        >
+                            <IconlyMoreSquare color={theme === 'dark' ? "#ffffff" : "#000000"} />
+                            <span className="text-base font-medium text-gray-800 dark:text-gray-200">Entities</span>
+                        </div>
+                        <div
+                            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                            onClick={() => handlePageRoute('/entities')}
                         >
                             <IconlySetting color={theme === 'dark' ? "#ffffff" : "#000000"} />
                             <span className="text-base font-medium text-gray-800 dark:text-gray-200">Settings</span>

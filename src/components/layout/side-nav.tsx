@@ -55,20 +55,20 @@ export function SideNav() {
                         <span className={`text-sm font-medium whitespace-nowrap text-gray-800 dark:text-gray-100 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>Tickets</span>
                     </div>
                     <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 cursor-pointer transition-all duration-200 hover:scale-105 will-change-transform"
-                        onClick={handlePageRoute.bind(null, '/settings')}
-                    >
-                        <div className="flex justify-center">
-                            <IconlySetting color={theme === 'dark' ? "#ffffff" : "#000000"} />
-                        </div>
-                        <span className={`text-sm font-medium whitespace-nowrap text-gray-800 dark:text-gray-100 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>Settings</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 cursor-pointer transition-all duration-200 hover:scale-105 will-change-transform"
                         onClick={handlePageRoute.bind(null, '/entities')}
                     >
                         <div className="flex justify-center">
                             <IconlyMoreSquare color={theme === 'dark' ? "#ffffff" : "#000000"} />
                         </div>
                         <span className={`text-sm font-medium whitespace-nowrap text-gray-800 dark:text-gray-100 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>Entities</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 cursor-pointer transition-all duration-200 hover:scale-105 will-change-transform"
+                        onClick={handlePageRoute.bind(null, '/settings')}
+                    >
+                        <div className="flex justify-center">
+                            <IconlySetting color={theme === 'dark' ? "#ffffff" : "#000000"} />
+                        </div>
+                        <span className={`text-sm font-medium whitespace-nowrap text-gray-800 dark:text-gray-100 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>Settings</span>
                     </div>
                 </div>
                 <div className="border-t border-gray-300 dark:border-gray-600 py-6 relative">
