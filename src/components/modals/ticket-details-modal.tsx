@@ -27,7 +27,7 @@ interface TicketModalProps {
         title: string;
         description: string;
         category?: string;
-        priority?: "LOW" | "MEDIUM" | "HIGH";
+        priority?: "LOW" | "MEDIUM" | "MAJOR" | "HIGH" | "HIGHEST" | "CRITICAL" | "DEFAULT";
         status?: "OPEN" | "IN_PROGRESS" | "CLOSED";
         createdAt?: Date;
         updatedAt?: Date;
@@ -307,9 +307,9 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
         }
     };
 
-    const PriorityIcon = PRIORITY_ICONS[priority as keyof typeof PRIORITY_ICONS];
-    const StatusIcon = STATUS_ICONS[status as keyof typeof STATUS_ICONS];
-    const CategoryIcon = category ? CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] : null;
+    const PriorityIcon = PRIORITY_ICONS[priority as keyof typeof PRIORITY_ICONS || "DEFAULT"]
+    const StatusIcon = STATUS_ICONS[status as keyof typeof STATUS_ICONS || "DEFAULT"]
+    const CategoryIcon = category ? CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS || "DEFAULT"] : null;
 
     return (
         <>
@@ -343,7 +343,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                             {priority && (
                                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                     <div className="flex items-center space-x-1">
-                                        <PriorityIcon color={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS]} size={20} />
+                                        <PriorityIcon color={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS || "DEFAULT"]} size={20} />
                                         <span>{capitalizeString(priority)}</span>
                                         <span>Priority</span>
                                     </div>
@@ -352,7 +352,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                             {status && (
                                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                     <div className="flex items-center space-x-1">
-                                        <StatusIcon color={STATUS_COLORS[status as keyof typeof STATUS_COLORS]} size={20} />
+                                        <StatusIcon color={STATUS_COLORS[status as keyof typeof STATUS_COLORS || "DEFAULT"]} size={20} />
                                         <span>{capitalizeString(status)}</span>
                                     </div>
                                 </div>
@@ -360,7 +360,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                             {category && CategoryIcon && (
                                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                     <div className="flex items-center space-x-1">
-                                        <CategoryIcon color={CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS]} size={20} />
+                                        <CategoryIcon color={CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS || "DEFAULT"]} size={20} />
                                         <span>{capitalizeString(category)}</span>
                                     </div>
                                 </div>

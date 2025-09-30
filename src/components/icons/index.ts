@@ -1,3 +1,5 @@
+export { IconlyStar } from "./star";
+export { IconlyDangerCircle } from "./danger";
 export { IconlyCloseSquare } from "./close";
 export { IconlySearch } from "./search";
 export { IconlyDelete } from "./delete";

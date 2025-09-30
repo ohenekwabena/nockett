@@ -11,6 +11,8 @@ import {
   IconlyMoreCircle,
   IconlyGraph,
   IconlyDocument,
+  IconlyDangerCircle,
+  IconlyStar,
 } from "./../components/icons";
 import { GiSpottedBug } from "react-icons/gi";
 
@@ -135,14 +137,19 @@ export const ICON_MAP = {
 
 export const PRIORITY_ICONS = {
   LOW: IconlyArrowDownSquare,
+  MINOR: IconlyArrowDownSquare,
   MEDIUM: EqualIcon,
   HIGH: IconlyArrowUpCircle,
+  MAJOR: IconlyArrowUpCircle,
+  CRITICAL: IconlyDangerCircle,
+  DEFAULT: IconlyInfoSquare,
 };
 
 export const STATUS_ICONS = {
   OPEN: IconlyUnlock,
   IN_PROGRESS: IconlyActivity,
   CLOSED: IconlyLock,
+  DEFAULT: IconlyInfoSquare,
 };
 
 export const CATEGORY_ICONS = {
@@ -152,18 +159,22 @@ export const CATEGORY_ICONS = {
   MAINTENANCE: IconlySetting,
   PERFORMANCE: IconlyGraph,
   DOCUMENTATION: IconlyDocument,
+  DEFAULT: IconlyStar,
 };
 
 export const PRIORITY_COLORS = {
   LOW: "#10B981", // Green
   MEDIUM: "#F59E0B", // Yellow
   HIGH: "#EF4444", // Red
+  CRITICAL: "#DC2626", // Dark Red
+  DEFAULT: "#6B7280", // Gray
 };
 
 export const STATUS_COLORS = {
   OPEN: "#3B82F6", // Blue
   IN_PROGRESS: "#FBBF24", // Yellow
   CLOSED: "#10B981", // Green
+  DEFAULT: "#6B7280", // Gray
 };
 
 export const CATEGORY_COLORS = {
@@ -173,6 +184,7 @@ export const CATEGORY_COLORS = {
   MAINTENANCE: "#F59E0B", // Yellow
   PERFORMANCE: "#8B5CF6", // Purple
   DOCUMENTATION: "#7C3AED", // Teal
+  DEFAULT: "#6B7280", // Gray
 };
 
 export const CATEGORIES = ["BUG", "FEATURE", "PERFORMANCE", "DOCUMENTATION", "SUPPORT", "MAINTENANCE"];
