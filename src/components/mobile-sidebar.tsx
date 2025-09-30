@@ -56,7 +56,7 @@ export function MobileSidebar() {
                         </div>
                         <div
                             className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                            onClick={() => handlePageRoute('/entities')}
+                            onClick={() => handlePageRoute('/settings')}
                         >
                             <IconlySetting color={theme === 'dark' ? "#ffffff" : "#000000"} />
                             <span className="text-base font-medium text-gray-800 dark:text-gray-200">Settings</span>

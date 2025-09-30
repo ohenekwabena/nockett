@@ -25,14 +25,26 @@ export function slugToString(slug: string) {
 
 // function to format a date to a more readable format like "January 1, 2023" including the time
 export function formatDate(date: string | Date) {
-  const options: Intl.DateTimeFormatOptions = {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  };
-  return new Date(date).toLocaleDateString("en-US", options);
+  try {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return "Invalid Date";
+    }
+
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    return dateObj.toLocaleDateString("en-US", options);
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "Invalid Date";
+  }
 }
 
 // function to format a number to a more readable format like 1,000,000

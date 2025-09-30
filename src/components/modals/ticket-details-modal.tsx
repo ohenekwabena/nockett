@@ -428,19 +428,19 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                                             {currentTicket.slaDueAt && (
                                                 <div className="mt-2 text-sm">
                                                     <span className="font-semibold dark:text-gray-400 text-gray-600">SLA due on:</span>{" "}
-                                                    {formatDate(new Date(currentTicket.slaDueAt).toLocaleString())}
+                                                    {formatDate(currentTicket.slaDueAt)}
                                                 </div>
                                             )}
                                             {currentTicket.createdAt && (
                                                 <div className="mt-2 text-sm">
                                                     <span className="font-semibold dark:text-gray-400 text-gray-600">Created on:</span>{" "}
-                                                    {formatDate(new Date(currentTicket.createdAt).toLocaleString())}
+                                                    {formatDate(currentTicket.createdAt)}
                                                 </div>
                                             )}
                                             {currentTicket.updatedAt && (
                                                 <div className="mt-2 text-sm">
                                                     <span className="font-semibold dark:text-gray-400 text-gray-600">Updated on:</span>{" "}
-                                                    {formatDate(new Date(currentTicket.updatedAt).toLocaleString())}
+                                                    {formatDate(currentTicket.updatedAt)}
                                                 </div>
                                             )}
 
@@ -587,7 +587,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                                                                 />
                                                                 <div className="flex justify-center items-center gap-2 mt-2 sm:mt-0">
                                                                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                        {comment.created_at ? formatDate(new Date(comment.created_at).toLocaleString()) : ''}
+                                                                        {comment.created_at ? formatDate(comment.created_at) : ''}
                                                                     </span>
                                                                     {comment.user_id === user?.id && (
                                                                         <AlertDialog open={commentToDelete === comment.id} onOpenChange={(open) => !open && setCommentToDelete(null)}>
@@ -675,7 +675,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                                                                 />
                                                                 <div className="flex gap-2 items-center justify-center mt-2 sm:mt-0">
                                                                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                        {note.created_at ? formatDate(new Date(note.created_at).toLocaleString()) : ''}
+                                                                        {note.created_at ? formatDate(note.created_at) : ''}
                                                                     </span>
                                                                     {note.user_id === user?.id && (
                                                                         <AlertDialog open={noteToDelete === note.id} onOpenChange={(open) => !open && setNoteToDelete(null)}>

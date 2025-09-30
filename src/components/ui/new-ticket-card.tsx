@@ -62,7 +62,7 @@ export default function TicketCard({ ticket, onTicketUpdated }: TicketCardProps)
                         <span>{ticket.title}</span>
                     </div>
                     <div className="w-fit">
-                        <Badge className={`ml-2 ${getStatusColor(ticket.status)} text-nowrap inline-block`} variant="secondary">
+                        <Badge className={`ml-2 ${getStatusColor(ticket.status)} text-nowrap inline-block min-w-fit`} variant="secondary">
                             {capitalizeString(ticket.status || "")}
                         </Badge>
                     </div>
