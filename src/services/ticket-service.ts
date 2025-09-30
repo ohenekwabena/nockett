@@ -34,6 +34,10 @@ export interface TicketComment {
   user_id?: string;
   content?: string;
   created_at?: string;
+  users?: {
+    name: string;
+    image_url?: string;
+  }[];
 }
 
 export interface TicketNote {
@@ -42,6 +46,11 @@ export interface TicketNote {
   user_id?: string;
   content?: string;
   created_at?: string;
+  users?: {
+    id: string;
+    name: string;
+    email: string;
+  }[];
 }
 
 export interface TicketAttachment {
@@ -211,7 +220,19 @@ export class TicketService {
   async getTicketComments(ticketId: string) {
     const { data, error } = await this.supabase
       .from("ticket_comments")
-      .select("*")
+      .select(
+        `
+      id,
+      ticket_id,
+      user_id,
+      content,
+      created_at,
+      users!user_id(
+        name,
+        image_url
+      )
+    `
+      )
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
     return { data, error };
@@ -236,7 +257,20 @@ export class TicketService {
   async getTicketNotes(ticketId: string) {
     const { data, error } = await this.supabase
       .from("ticket_notes")
-      .select("*")
+      .select(
+        `
+        id,
+        ticket_id,
+        user_id,
+        content,
+        created_at,
+        users!user_id(
+          id,
+          name,
+          email
+        )
+      `
+      )
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
     return { data, error };
@@ -614,6 +648,111 @@ export class TicketService {
       .select("*")
       .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
       .order("created_at", { ascending: false });
+    return { data, error };
+  }
+
+  // Search method with filters for specific fields
+  async searchTicketsWithFilters(filters: {
+    searchTerm?: string;
+    status?: string;
+    priority?: string;
+    category?: string;
+    assignee?: string;
+    creator?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    let query = this.supabase.from("tickets").select(`
+      id,
+      title,
+      description,
+      status,
+      created_at,
+      updated_at,
+      closed_at,
+      site,
+      system,
+      error_code,
+      category_id,
+      priority_id,
+      creator_id,
+      assignee_id,
+      ticket_number,
+      ticket_categories(id, name),
+      ticket_priorities(id, name),
+      assignee(id, name),
+      users!creator_id(id, name, email)
+    `);
+
+    // Apply search term filter
+    if (filters.searchTerm?.trim()) {
+      const term = filters.searchTerm.trim();
+      query = query.or(`
+        title.ilike.%${term}%,
+        description.ilike.%${term}%,
+        id.ilike.%${term}%,
+        ticket_number.ilike.%${term}%,
+        site.ilike.%${term}%,
+        system.ilike.%${term}%,
+        error_code.ilike.%${term}%
+      `);
+    }
+
+    // Apply status filter
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+
+    // Apply date range filter
+    if (filters.dateFrom) {
+      query = query.gte("created_at", filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      query = query.lte("created_at", filters.dateTo);
+    }
+
+    // Apply assignee filter
+    if (filters.assignee) {
+      query = query.eq("assignee_id", parseInt(filters.assignee));
+    }
+
+    // Apply creator filter
+    if (filters.creator) {
+      query = query.eq("creator_id", filters.creator);
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false });
+    return { data, error };
+  }
+
+  // Quick search for autocomplete suggestions
+  async getSearchSuggestions(searchTerm: string, limit: number = 5) {
+    if (!searchTerm.trim()) {
+      return { data: [], error: null };
+    }
+
+    const term = searchTerm.trim();
+
+    const { data, error } = await this.supabase
+      .from("tickets")
+      .select(
+        `
+        id,
+        title,
+        ticket_number,
+        status
+      `
+      )
+      .or(
+        `
+        title.ilike.%${term}%,
+        id.ilike.%${term}%,
+        ticket_number.ilike.%${term}%
+      `
+      )
+      .limit(limit)
+      .order("created_at", { ascending: false });
+
     return { data, error };
   }
 }

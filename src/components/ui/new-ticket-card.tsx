@@ -1,11 +1,11 @@
 "use client";
 import { capitalizeString } from "@/utils/functions";
-import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
 import { Card, CardContent, CardFooter, CardHeader } from "./card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 import { FlagIcon } from "lucide-react";
 import TicketModal from "../modals/ticket-details-modal";
+import PersonEntityAvatar from "../person-entity-avatar";
 import { useState } from "react";
 
 
@@ -76,12 +76,13 @@ export default function TicketCard({ ticket, onTicketUpdated }: TicketCardProps)
                     <TooltipProvider>
                         <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
-                                <Avatar className="w-10 h-10 bg-blue-500 dark:bg-blue-300 text-gray-200 dark:text-gray-800 p-4">
-                                    <AvatarImage src="" alt="Assignee Avatar" />
-                                    <AvatarFallback className="text-sm font-medium">
-                                        {assignee?.name ? assignee.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <div>
+                                    <PersonEntityAvatar
+                                        name={assignee?.name}
+                                        type="assignee"
+                                        className="cursor-pointer"
+                                    />
+                                </div>
                             </TooltipTrigger>
                             <TooltipContent className="bg-gray-800 text-gray-100 *:text-sm">
                                 {assignee?.name || 'Unassigned'}

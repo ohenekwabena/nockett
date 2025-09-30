@@ -4,12 +4,15 @@ import { useState, useEffect } from "react";
 import TicketCard from "@/components/ui/new-ticket-card";
 import { ticketService, type Ticket } from "@/services/ticket-service";
 import { TicketsPageSkeleton } from "@/components/skeletons/tickets-page-skeleton";
+import SearchBar from "@/components/search-bar";
 
 export default function TicketsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
     const ticketsPerPage = 10;
 
     useEffect(() => {
@@ -27,6 +30,11 @@ export default function TicketsPage() {
         };
     }, []);
 
+    // Reset to first page when search results change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filteredTickets]);
+
     const loadTickets = async () => {
         try {
             setLoading(true);
@@ -35,19 +43,77 @@ export default function TicketsPage() {
                 setError(error.message);
             } else {
                 setTickets(data || []);
+                setFilteredTickets(data || []);
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (_) {
+        } catch (err) {
             setError('Failed to load tickets');
+            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
-    const totalPages = Math.ceil(tickets.length / ticketsPerPage);
+    const filterTicketsLocally = (term: string) => {
+        if (!term.trim()) {
+            setFilteredTickets(tickets);
+            return;
+        }
+
+        const searchLower = term.toLowerCase();
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const filtered = tickets.filter((ticket: any) => {
+            // Search in basic ticket fields
+            const matchesBasic =
+                ticket.id?.toLowerCase().includes(searchLower) ||
+                ticket.title?.toLowerCase().includes(searchLower) ||
+                ticket.description?.toLowerCase().includes(searchLower) ||
+                ticket.status?.toLowerCase().includes(searchLower) ||
+                ticket.site?.toLowerCase().includes(searchLower) ||
+                ticket.system?.toLowerCase().includes(searchLower) ||
+                ticket.error_code?.toLowerCase().includes(searchLower) ||
+                ticket.ticket_number?.toLowerCase().includes(searchLower);
+
+            // Search in category
+            const categoryName = Array.isArray(ticket.ticket_categories)
+                ? ticket.ticket_categories[0]?.name
+                : ticket.ticket_categories?.name;
+            const matchesCategory = categoryName?.toLowerCase().includes(searchLower);
+
+            // Search in priority
+            const priorityName = Array.isArray(ticket.ticket_priorities)
+                ? ticket.ticket_priorities[0]?.name
+                : ticket.ticket_priorities?.name;
+            const matchesPriority = priorityName?.toLowerCase().includes(searchLower);
+
+            // Search in assignee
+            const assigneeName = Array.isArray(ticket.assignee)
+                ? ticket.assignee[0]?.name
+                : ticket.assignee?.name;
+            const matchesAssignee = assigneeName?.toLowerCase().includes(searchLower);
+
+            // Search in creator
+            const creatorData = Array.isArray(ticket.users)
+                ? ticket.users[0]
+                : ticket.users;
+            const matchesCreator =
+                creatorData?.name?.toLowerCase().includes(searchLower) ||
+                creatorData?.email?.toLowerCase().includes(searchLower);
+
+            return matchesBasic || matchesCategory || matchesPriority || matchesAssignee || matchesCreator;
+        });
+
+        setFilteredTickets(filtered);
+    };
+
+    const handleSearch = (term: string) => {
+        setSearchTerm(term);
+        filterTicketsLocally(term);
+    };
+
+    const totalPages = Math.ceil(filteredTickets.length / ticketsPerPage);
     const startIndex = (currentPage - 1) * ticketsPerPage;
     const endIndex = startIndex + ticketsPerPage;
-    const currentTickets = tickets.slice(startIndex, endIndex);
+    const currentTickets = filteredTickets.slice(startIndex, endIndex);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -73,10 +139,33 @@ export default function TicketsPage() {
                 }}>
                     Tickets
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                    Showing {startIndex + 1}-{Math.min(endIndex, tickets.length)} of{" "}
-                    {tickets.length} tickets
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    {searchTerm ? (
+                        <>
+                            Showing {startIndex + 1}-{Math.min(endIndex, filteredTickets.length)} of{" "}
+                            {filteredTickets.length} tickets matching &ldquo;{searchTerm}&ldquo;
+                            {filteredTickets.length !== tickets.length && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                                    (filtered from {tickets.length} total)
+                                </span>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            Showing {startIndex + 1}-{Math.min(endIndex, filteredTickets.length)} of{" "}
+                            {filteredTickets.length} tickets
+                        </>
+                    )}
                 </p>
+
+                <div className="mb-6 flex justify-center items-center w-full">
+                    <SearchBar
+                        onSearch={handleSearch}
+                        placeholder="Search by ticket ID, title, description, assignee, creator, status..."
+                        className="max-w-2xl w-[480px]"
+                        isLoading={false}
+                    />
+                </div>
             </div>
 
             <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 mb-8">
@@ -85,12 +174,31 @@ export default function TicketsPage() {
                 ))}
             </div>
 
-            {tickets.length === 0 && (
+            {filteredTickets.length === 0 && (
                 <div className="text-center py-12">
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
-                    <p className="text-gray-500 dark:text-gray-500 text-sm">
-                        Click the &quot;Add New&quot; button in the top right to create your first ticket
-                    </p>
+                    {searchTerm ? (
+                        <>
+                            <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                No tickets found matching &ldquo;{searchTerm}&ldquo;
+                            </p>
+                            <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
+                                Try adjusting your search terms or clearing the search to see all tickets
+                            </p>
+                            <button
+                                onClick={() => handleSearch("")}
+                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                            >
+                                Clear search and show all tickets
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
+                            <p className="text-gray-500 dark:text-gray-500 text-sm">
+                                Click the &quot;Add New&quot; button in the top right to create your first ticket
+                            </p>
+                        </>
+                    )}
                 </div>
             )}
 

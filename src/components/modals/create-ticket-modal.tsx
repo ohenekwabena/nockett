@@ -16,6 +16,7 @@ import {
     CATEGORY_COLORS,
     STATUSES
 } from "@/utils/constants";
+import useSupabase from "@/hooks/use-supabase";
 
 interface CreateTicketModalProps {
     isOpen: boolean;
@@ -34,6 +35,7 @@ interface CreateTicketModalProps {
             name: string | undefined;
             avatarUrl?: string;
         };
+        initialNote?: string;
     };
 }
 
@@ -46,11 +48,13 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
     const [assigneeId, setAssigneeId] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [initialNote, setInitialNote] = useState("");
 
     // Data for dropdowns
     const [categories, setCategories] = useState<TicketCategory[]>([]);
     const [priorities, setPriorities] = useState<TicketPriority[]>([]);
     const [assignees, setAssignees] = useState<Assignee[]>([]);
+    const { user } = useSupabase();
 
     useEffect(() => {
         if (isOpen) {
@@ -67,6 +71,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
             setPriority(ticket.priority || "LOW");
             setCategory(ticket.category || "");
             setAssigneeId(ticket.assignee?.id || "");
+            setInitialNote(ticket.initialNote || "");
             setError(null);
         } else if (isOpen && mode === "create") {
             // Reset form for create mode
@@ -76,6 +81,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
             setPriority("LOW");
             setCategory("");
             setAssigneeId("");
+            setInitialNote("");
             setError(null);
         }
     }, [isOpen, mode, ticket]);
@@ -126,6 +132,23 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
             let result;
             if (mode === "create") {
                 result = await ticketService.createTicket(ticketData);
+
+                // If ticket was created successfully and there's an initial note, add it
+                if (!result.error && result.data && initialNote.trim()) {
+                    // Try to create note with user_id first
+                    await ticketService.createTicketNote({
+                        ticket_id: result.data.id,
+                        content: initialNote.trim(),
+                        user_id: user?.id
+                    });
+
+                    // Retry creating the note
+                    await ticketService.createTicketNote({
+                        ticket_id: result.data.id,
+                        content: initialNote.trim(),
+                        user_id: user?.id
+                    });
+                }
             } else {
                 result = await ticketService.updateTicket(ticket?.id || "", ticketData);
             }
@@ -142,11 +165,11 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
                     setPriority("LOW");
                     setCategory("");
                     setAssigneeId("");
+                    setInitialNote("");
                 }
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
-            setError("An unexpected error occurred");
+            setError(`An unexpected error occurred: ${err}`);
         } finally {
             setLoading(false);
         }
@@ -225,6 +248,24 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
                                     placeholder="Enter ticket description"
                                     className="w-full h-24 sm:h-32 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 resize-none active:ring-0"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="text-sm font-semibold dark:text-gray-400 text-gray-600 block mb-1">
+                                    Initial Note {mode === "create" ? "(Optional)" : ""}
+                                </label>
+                                <Textarea
+                                    value={initialNote}
+                                    onChange={(e) => setInitialNote(e.target.value)}
+                                    placeholder={mode === "create" ? "Add an initial note..." : "This field is for reference only in edit mode"}
+                                    className="w-full h-20 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 resize-none active:ring-0"
+                                    disabled={mode === "edit"}
+                                />
+                                {mode === "edit" && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        Use the Notes tab in the ticket details to add new notes.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -1,3 +1,5 @@
+export { IconlyCloseSquare } from "./close";
+export { IconlySearch } from "./search";
 export { IconlyDelete } from "./delete";
 export { IconlyMoreSquare } from "./more-square";
 export { IconlyUser } from "./user";

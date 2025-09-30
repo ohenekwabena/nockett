@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       assignee: {
@@ -349,6 +324,7 @@ export type Database = {
           site: string | null
           status: string
           system: string | null
+          ticket_number: string | null
           title: string
           updated_at: string | null
         }
@@ -365,6 +341,7 @@ export type Database = {
           site?: string | null
           status: string
           system?: string | null
+          ticket_number?: string | null
           title: string
           updated_at?: string | null
         }
@@ -381,6 +358,7 @@ export type Database = {
           site?: string | null
           status?: string
           system?: string | null
+          ticket_number?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -457,6 +435,7 @@ export type Database = {
           department_id: number | null
           email: string
           id: string
+          imageurl: string | null
           name: string
         }
         Insert: {
@@ -464,6 +443,7 @@ export type Database = {
           department_id?: number | null
           email: string
           id?: string
+          imageurl?: string | null
           name: string
         }
         Update: {
@@ -471,6 +451,7 @@ export type Database = {
           department_id?: number | null
           email?: string
           id?: string
+          imageurl?: string | null
           name?: string
         }
         Relationships: [
@@ -617,9 +598,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
