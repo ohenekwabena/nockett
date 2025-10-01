@@ -294,7 +294,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200">
-                                        {STATUSES.map((s) => (
+                                        {STATUSES.filter(s => mode === "create" ? s !== "CLOSED" : true).map((s) => (
                                             <SelectItem key={s} value={s}>{capitalizeString(s)}</SelectItem>
                                         ))}
                                     </SelectContent>
