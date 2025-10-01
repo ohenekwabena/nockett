@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { capitalizeString } from "@/utils/functions";
 import PersonEntityAvatar from "@/components/person-entity-avatar";
 import TicketModal from "@/components/modals/ticket-details-modal";
-import { ChevronUp, ChevronDown, FlagIcon } from "lucide-react";
+import { ChevronUp, ChevronDown, FlagIcon, Calendar, User, AlertCircle } from "lucide-react";
+import { STATUS_COLORS } from "@/utils/constants";
 
 interface TicketListTableProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,12 +19,6 @@ interface TicketListTableProps {
 
 type SortField = 'id' | 'title' | 'status' | 'priority' | 'assignee' | 'created_at';
 type SortDirection = 'asc' | 'desc';
-
-const statusColors = {
-    OPEN: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
-    IN_PROGRESS: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-    CLOSED: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
-};
 
 export default function TicketListTable({
     tickets,
@@ -97,7 +92,7 @@ export default function TicketListTable({
     };
 
     const getStatusColor = (status: string) => {
-        return statusColors[status as keyof typeof statusColors] || statusColors.OPEN;
+        return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.DEFAULT;
     };
 
     const SortIcon = ({ field }: { field: SortField }) => {
@@ -109,69 +104,86 @@ export default function TicketListTable({
 
     return (
         <>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 overflow-hidden backdrop-blur-sm">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-750 px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        Tickets Overview
+                        <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                            {tickets.length}
+                        </Badge>
+                    </h3>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                            <tr>
+                        <thead className="bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm">
+                            <tr className="border-b border-gray-200/50 dark:border-gray-700/50">
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-700/60 transition-colors group"
                                     onClick={() => handleSort('id')}
                                 >
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-1 bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
                                         ID
                                         <SortIcon field="id" />
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-700/60 transition-colors group"
                                     onClick={() => handleSort('title')}
                                 >
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-1 bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
                                         Title
                                         <SortIcon field="title" />
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-700/60 transition-colors group" align="center"
                                     onClick={() => handleSort('status')}
                                 >
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-1 bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
                                         Status
                                         <SortIcon field="status" />
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-700/60 transition-colors group"
                                     onClick={() => handleSort('priority')}
                                 >
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-1 bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
                                         Priority
                                         <SortIcon field="priority" />
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-700/60 transition-colors group"
                                     onClick={() => handleSort('assignee')}
                                 >
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-1 bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
                                         Assignee
                                         <SortIcon field="assignee" />
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-700/60 transition-colors group"
                                     onClick={() => handleSort('created_at')}
                                 >
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-1 bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
                                         Created
                                         <SortIcon field="created_at" />
                                     </div>
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {sortedTickets.map((ticket) => {
+                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800/50">
+                            {sortedTickets.map((ticket, index) => {
                                 const priority = Array.isArray(ticket.ticket_priorities)
                                     ? ticket.ticket_priorities[0]?.name || ""
                                     : ticket.ticket_priorities?.name || "";
@@ -185,46 +197,97 @@ export default function TicketListTable({
                                 return (
                                     <tr
                                         key={ticket.id}
-                                        className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                                        className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/10 cursor-pointer transition-all duration-200 group border-l-4 border-l-transparent hover:border-l-blue-400"
                                         onClick={() => handleTicketClick(ticket)}
+                                        style={{
+                                            animationDelay: `${index * 50}ms`,
+                                        }}
                                     >
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            #{ticket.id?.slice(-8) || 'N/A'}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full opacity-60 group-hover:opacity-100 transition-opacity"></div>
+                                                <span className="text-sm font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-md">
+                                                    #{ticket.id?.slice(-8) || 'N/A'}
+                                                </span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-gray-900 dark:text-gray-100 truncate max-w-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                            {ticket.title}
+                                                        </span>
+                                                        {shouldShowHighPriorityFlag && (
+                                                            <div className="flex items-center gap-1 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded-full">
+                                                                <FlagIcon className="text-red-500 dark:text-red-400" size={12} />
+                                                                <span className="text-xs font-medium text-red-600 dark:text-red-400">HIGH</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {ticket.description && (
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate max-w-md">
+                                                            {ticket.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap" align="center">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-medium truncate max-w-xs">{ticket.title}</span>
-                                                {shouldShowHighPriorityFlag && (
-                                                    <FlagIcon className="text-red-600 dark:text-red-500 flex-shrink-0" size={16} />
-                                                )}
+                                                <div
+                                                    className="w-2 h-2 rounded-full"
+                                                    style={{ backgroundColor: getStatusColor(ticket.status) }}
+                                                ></div>
+                                                <Badge
+                                                    className="text-white border-0 shadow-sm"
+                                                    style={{ backgroundColor: getStatusColor(ticket.status) }}
+                                                >
+                                                    {capitalizeString(ticket.status || "")}
+                                                </Badge>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <Badge className={`${getStatusColor(ticket.status)} text-xs`} variant="secondary">
-                                                {capitalizeString(ticket.status || "")}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                            {capitalizeString(priority || "None")}
+                                            <div className="flex items-center gap-2">
+                                                <AlertCircle
+                                                    className={`w-4 h-4 ${priority?.toUpperCase() === 'HIGH' ? 'text-red-500' :
+                                                        priority?.toUpperCase() === 'MEDIUM' ? 'text-yellow-500' :
+                                                            'text-green-500'
+                                                        }`}
+                                                />
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                    {capitalizeString(priority || "None")}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {assignee ? (
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg p-2 group-hover:bg-white dark:group-hover:bg-gray-700/50 transition-colors">
                                                     <PersonEntityAvatar
                                                         name={assignee.name}
                                                         type="assignee"
-                                                        className="w-6 h-6"
+                                                        className="bg-transparent"
                                                     />
-                                                    <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-xs">
-                                                        {assignee.name}
-                                                    </span>
                                                 </div>
                                             ) : (
-                                                <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
+                                                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                                                    <User className="w-4 h-4" />
+                                                    <span className="text-sm">Unassigned</span>
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : 'N/A'}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                                                <Calendar className="w-4 h-4" />
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm">
+                                                        {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : 'N/A'}
+                                                    </span>
+                                                    <span className="text-xs">
+                                                        {ticket.created_at ? new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -234,8 +297,11 @@ export default function TicketListTable({
                 </div>
 
                 {tickets.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
+                    <div className="text-center py-16">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertCircle className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 mb-2 text-lg font-medium">No tickets found</p>
                         <p className="text-gray-500 dark:text-gray-500 text-sm">
                             Click the &quot;Add New&quot; button in the top right to create your first ticket
                         </p>
@@ -245,31 +311,35 @@ export default function TicketListTable({
 
             {selectedTicket && (
                 <TicketModal
-                    ticket={{
-                        ...selectedTicket,
-                        status: selectedTicket.status as "OPEN" | "IN_PROGRESS" | "CLOSED",
-                        description: selectedTicket.description || "",
-                        priority: (Array.isArray(selectedTicket.ticket_priorities)
-                            ? selectedTicket.ticket_priorities[0]?.name?.toUpperCase()
-                            : selectedTicket.ticket_priorities?.name?.toUpperCase()) as "HIGH" | "LOW" | "MEDIUM" | undefined,
-                        category: (Array.isArray(selectedTicket.ticket_categories)
-                            ? selectedTicket.ticket_categories[0]?.name?.toUpperCase()
-                            : selectedTicket.ticket_categories?.name?.toUpperCase()),
-                        assignee: (() => {
-                            const assignee = Array.isArray(selectedTicket.assignee)
-                                ? selectedTicket.assignee[0]
-                                : selectedTicket.assignee;
-                            return assignee ? { id: assignee.id.toString(), name: assignee.name } : undefined;
-                        })(),
-                        creator: (() => {
-                            const creator = Array.isArray(selectedTicket.users)
-                                ? selectedTicket.users[0]
-                                : selectedTicket.users;
-                            return creator ? { id: creator.id, name: creator.name } : undefined;
-                        })(),
-                        createdAt: selectedTicket.created_at ? new Date(selectedTicket.created_at) : undefined,
-                        updatedAt: selectedTicket.updated_at ? new Date(selectedTicket.updated_at) : undefined,
-                    }}
+                    ticket={(() => {
+                        // Find the current ticket from the tickets array to get updated data
+                        const currentTicket = tickets.find(t => t.id === selectedTicket.id) || selectedTicket;
+                        return {
+                            ...currentTicket,
+                            status: currentTicket.status as "OPEN" | "IN_PROGRESS" | "CLOSED",
+                            description: currentTicket.description || "",
+                            priority: (Array.isArray(currentTicket.ticket_priorities)
+                                ? currentTicket.ticket_priorities[0]?.name?.toUpperCase()
+                                : currentTicket.ticket_priorities?.name?.toUpperCase()) as "HIGH" | "LOW" | "MEDIUM" | undefined,
+                            category: (Array.isArray(currentTicket.ticket_categories)
+                                ? currentTicket.ticket_categories[0]?.name?.toUpperCase()
+                                : currentTicket.ticket_categories?.name?.toUpperCase()),
+                            assignee: (() => {
+                                const assignee = Array.isArray(currentTicket.assignee)
+                                    ? currentTicket.assignee[0]
+                                    : currentTicket.assignee;
+                                return assignee ? { id: assignee.id.toString(), name: assignee.name } : undefined;
+                            })(),
+                            creator: (() => {
+                                const creator = Array.isArray(currentTicket.users)
+                                    ? currentTicket.users[0]
+                                    : currentTicket.users;
+                                return creator ? { id: creator.id, name: creator.name } : undefined;
+                            })(),
+                            createdAt: currentTicket.created_at ? new Date(currentTicket.created_at) : undefined,
+                            updatedAt: currentTicket.updated_at ? new Date(currentTicket.updated_at) : undefined,
+                        };
+                    })()}
                     isOpen={isModalOpen}
                     onOpenChange={setIsModalOpen}
                     onTicketUpdated={onTicketUpdated}

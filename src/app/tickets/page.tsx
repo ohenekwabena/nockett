@@ -8,7 +8,7 @@ import { useOptimisticTickets } from "@/hooks/use-optimistic-tickets";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TicketKanban } from "@/components/kanban/ticket-kanban";
 import TicketListTable from "@/components/ticket-list/ticket-list-table";
-import { LayoutGrid, List } from "lucide-react";
+import { Kanban, LayoutGrid, List } from "lucide-react";
 
 export default function TicketsPage() {
     const [currentPage, setCurrentPage] = useState(1);
@@ -167,32 +167,44 @@ export default function TicketsPage() {
                         </>
                     )}
                 </p>
-
-                <div className="mb-6 flex justify-center items-center w-full">
-                    <SearchBar
-                        onSearch={handleSearch}
-                        placeholder="Search by ticket ID, title, description, assignee, creator, status..."
-                        className="max-w-2xl w-[480px]"
-                        isLoading={false}
-                    />
-                </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-md mb-6">
-                    <TabsTrigger value="grid" className="flex items-center gap-2">
-                        <LayoutGrid className="w-4 h-4" />
-                        Grid
-                    </TabsTrigger>
-                    <TabsTrigger value="kanban" className="flex items-center gap-2">
-                        <LayoutGrid className="w-4 h-4" />
-                        Kanban
-                    </TabsTrigger>
-                    <TabsTrigger value="list" className="flex items-center gap-2">
-                        <List className="w-4 h-4" />
-                        List
-                    </TabsTrigger>
-                </TabsList>
+                <div className="mb-6 flex flex-col lg:flex-row justify-center lg:justify-between items-center w-full gap-4">
+                    <div className="overflow-x-auto scrollbar-hide">
+                        <TabsList className="inline-flex min-w-max h-auto">
+                            <TabsTrigger
+                                value="grid"
+                                className="flex items-center gap-2 py-2 cursor-pointer  text-gray-800 dark:text-gray-200 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-900 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-100"
+                            >
+                                <LayoutGrid className="w-4 h-4 -translate-y-0.5" />
+                                Grid
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="kanban"
+                                className="flex items-center gap-2 py-2 cursor-pointer text-gray-800 dark:text-gray-200 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-900 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-100"
+                            >
+                                <Kanban className="w-4 h-4 -translate-y-0.5" />
+                                Kanban
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="list"
+                                className="flex items-center gap-2 py-2 cursor-pointer  text-gray-800 dark:text-gray-200 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-900 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-100"
+                            >
+                                <List className="w-4 h-4 -translate-y-0.5" />
+                                List
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
+                    <div className="flex justify-center items-center w-fit">
+                        <SearchBar
+                            onSearch={handleSearch}
+                            placeholder="Search by ticket ID, title, description, assignee, creator, status..."
+                            className="max-w-2xl w-fit sm:w-[480px]"
+                            isLoading={false}
+                        />
+                    </div>
+                </div>
 
                 <TabsContent value="grid" className="space-y-6">
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 mb-8">

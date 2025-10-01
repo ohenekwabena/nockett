@@ -15,6 +15,7 @@ import {
     STATUSES
 } from "@/utils/constants";
 import { IconlyEditSquare, IconlyDelete } from "../icons";
+import CreateTicketModal from "./create-ticket-modal";
 import { Textarea } from "../ui/textarea";
 import { Input } from "../ui/input";
 import useSupabase from "@/hooks/use-supabase";
@@ -566,7 +567,7 @@ export default function TicketModal({
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 mb-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:mt-20 mb-3">
                                             <div>
                                                 <h3 className="text-sm text-gray-400 dark:text-gray-500 font-semibold mb-1">Created By</h3>
                                                 <PersonEntityAvatar

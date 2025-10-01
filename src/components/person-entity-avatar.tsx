@@ -39,7 +39,7 @@ export default function PersonEntityAvatar({
                     {getInitials(name)}
                 </AvatarFallback>
             </Avatar>
-            <span className="font-semibold dark:text-gray-400 text-gray-600 text-sm sm:text-base">
+            <span className="font-semibold dark:text-gray-400 text-gray-600 text-sm ">
                 {displayName}
             </span>
         </div>

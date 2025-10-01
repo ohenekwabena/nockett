@@ -117,7 +117,7 @@ export function TicketKanban({
                 onDragEnd={handleDragEnd}
                 sensors={sensors}
             >
-                <div className="grid grid-cols-3 gap-6 h-full min-w-[960px] p-4 backdrop:blur-sm  rounded-2xl bg-gray-300/20 dark:bg-gray-800/50">
+                <div className="grid grid-cols-3 gap-6 h-full min-w-[1000px] p-4 backdrop:blur-sm  rounded-2xl bg-gray-300/20 dark:bg-gray-800/50">
                     {COLUMNS.map((column) => (
                         <DroppableColumn
                             key={column.id}
