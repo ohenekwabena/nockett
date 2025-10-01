@@ -46,9 +46,18 @@ interface TicketModalProps {
     onOpenChange?: (open: boolean) => void;
     isOpen?: boolean;
     onTicketUpdated: () => void;
+    updateTicketWithOptimism?: (ticketId: string, updates: any, serverUpdates: any) => Promise<void>;
+    deleteTicketWithOptimism?: (ticketId: string) => Promise<void>;
 }
 
-export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpdated }: TicketModalProps) {
+export default function TicketModal({
+    ticket,
+    isOpen,
+    onOpenChange,
+    onTicketUpdated,
+    updateTicketWithOptimism,
+    deleteTicketWithOptimism
+}: TicketModalProps) {
     const [status, setStatus] = useState(ticket.status || "OPEN");
     const [priority, setPriority] = useState(ticket.priority || "LOW");
     const [category, setCategory] = useState(ticket.category || "");
@@ -249,37 +258,49 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
 
         setLoading(true);
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const updateData: any = {};
+            let optimisticUpdates: any = {};
 
             switch (field) {
                 case 'status':
                     updateData.status = value;
                     setStatus(value);
+                    optimisticUpdates = { status: value };
                     break;
                 case 'priority':
                     const priorityObj = priorities.find(p => p.name.toUpperCase() === value);
                     updateData.priority_id = priorityObj?.id;
                     setPriority(value);
+                    optimisticUpdates = {
+                        ticket_priorities: [{ id: priorityObj?.id, name: priorityObj?.name }]
+                    };
                     break;
                 case 'category':
                     const categoryObj = categories.find(c => c.name.toUpperCase() === value);
                     updateData.category_id = categoryObj?.id;
                     setCategory(value);
+                    optimisticUpdates = {
+                        ticket_categories: [{ id: categoryObj?.id, name: categoryObj?.name }]
+                    };
                     break;
                 case 'assignee':
                     updateData.assignee_id = (value && value !== "unassigned") ? parseInt(value) : null;
                     setAssigneeId(value === "unassigned" ? "" : value);
+                    const assigneeObj = assignees.find(a => a.id.toString() === value);
+                    optimisticUpdates = {
+                        assignee: value === "unassigned" ? null : [{ id: parseInt(value), name: assigneeObj?.name }]
+                    };
                     break;
             }
 
-            const { error } = await ticketService.updateTicket(ticket.id, updateData);
-
-            if (!error) {
-                // Refresh ticket data to get updated information
-                await refreshTicketData();
-                // Notify parent component about the update
-                onTicketUpdated();
+            if (updateTicketWithOptimism) {
+                await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
+            } else {
+                // Fallback to regular update
+                const { error } = await ticketService.updateTicket(ticket.id, updateData);
+                if (!error) {
+                    onTicketUpdated();
+                }
             }
         } catch (err) {
             console.error("Error updating ticket:", err);
@@ -293,12 +314,16 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
 
         setLoading(true);
         try {
-            const { error } = await ticketService.deleteTicket(ticket.id);
-
-            if (!error) {
-                onTicketUpdated();
-                onOpenChange?.(false);
+            if (deleteTicketWithOptimism) {
+                await deleteTicketWithOptimism(ticket.id);
+            } else {
+                // Fallback to regular delete
+                const { error } = await ticketService.deleteTicket(ticket.id);
+                if (!error) {
+                    onTicketUpdated();
+                }
             }
+            onOpenChange?.(false);
         } catch (err) {
             console.error("Error deleting ticket:", err);
         } finally {
@@ -307,9 +332,9 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
         }
     };
 
-    const PriorityIcon = PRIORITY_ICONS[priority as keyof typeof PRIORITY_ICONS || "DEFAULT"]
-    const StatusIcon = STATUS_ICONS[status as keyof typeof STATUS_ICONS || "DEFAULT"]
-    const CategoryIcon = category ? CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS || "DEFAULT"] : null;
+    const PriorityIcon = PRIORITY_ICONS[priority as keyof typeof PRIORITY_ICONS] || PRIORITY_ICONS.DEFAULT;
+    const StatusIcon = STATUS_ICONS[status as keyof typeof STATUS_ICONS] || STATUS_ICONS.DEFAULT;
+    const CategoryIcon = category ? (CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] || CATEGORY_ICONS.DEFAULT) : null;
 
     return (
         <>
@@ -343,7 +368,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                             {priority && (
                                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                     <div className="flex items-center space-x-1">
-                                        <PriorityIcon color={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS || "DEFAULT"]} size={20} />
+                                        <PriorityIcon color={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS] || PRIORITY_COLORS.DEFAULT} size={20} />
                                         <span>{capitalizeString(priority)}</span>
                                         <span>Priority</span>
                                     </div>
@@ -352,7 +377,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                             {status && (
                                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                     <div className="flex items-center space-x-1">
-                                        <StatusIcon color={STATUS_COLORS[status as keyof typeof STATUS_COLORS || "DEFAULT"]} size={20} />
+                                        <StatusIcon color={STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.DEFAULT} size={20} />
                                         <span>{capitalizeString(status)}</span>
                                     </div>
                                 </div>
@@ -360,7 +385,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                             {category && CategoryIcon && (
                                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-2 sm:px-3 py-1 rounded-full text-sm">
                                     <div className="flex items-center space-x-1">
-                                        <CategoryIcon color={CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS || "DEFAULT"]} size={20} />
+                                        <CategoryIcon color={CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS] || CATEGORY_COLORS.DEFAULT} size={20} />
                                         <span>{capitalizeString(category)}</span>
                                     </div>
                                 </div>
@@ -444,7 +469,7 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                                                 </div>
                                             )}
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 mb-3">
                                                 <div>
                                                     <h3 className="text-sm text-gray-400 dark:text-gray-500 font-semibold mb-1">Created By</h3>
                                                     <PersonEntityAvatar
@@ -734,9 +759,9 @@ export default function TicketModal({ ticket, isOpen, onOpenChange, onTicketUpda
                     id: ticket.id,
                     title: ticket.title,
                     description: ticket.description || "",
-                    category: category, // Use the current loaded category name
-                    priority: priority as "LOW" | "MEDIUM" | "HIGH", // Use the current loaded priority name  
-                    status: status as "OPEN" | "IN_PROGRESS" | "CLOSED", // Use the current status
+                    category: category,
+                    priority: priority as "LOW" | "MEDIUM" | "HIGH",
+                    status: status as "OPEN" | "IN_PROGRESS" | "CLOSED",
                     assignee: assigneeId ? {
                         id: assigneeId,
                         name: assignees.find(a => a.id.toString() === assigneeId)?.name

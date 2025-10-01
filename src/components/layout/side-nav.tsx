@@ -38,10 +38,10 @@ export function SideNav() {
         <>
             <div className={`${isExpanded ? 'w-48' : 'w-15'} min-w-10 h-[70vh] bg-white dark:bg-gray-800 px-2 py-4 rounded-2xl fixed left-4 top-1/2 -translate-y-1/2 flex-col justify-between gap-6 transition-all duration-300 ease-in-out hidden sm:flex`}>
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 cursor-pointer transition-all duration-200 hover:scale-105 will-change-transform"
+                    <div className={`flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 cursor-pointer transition-all duration-200 hover:scale-105 will-change-transform`}
                         onClick={handlePageRoute.bind(null, '/dashboard')}
                     >
-                        <div className="flex justify-center">
+                        <div className="flex justify-center ">
                             <IconlyChart color={theme === 'dark' ? "#ffffff" : "#000000"} />
                         </div>
                         <span className={`text-sm font-medium whitespace-nowrap text-gray-800 dark:text-gray-100 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>Dashboard</span>

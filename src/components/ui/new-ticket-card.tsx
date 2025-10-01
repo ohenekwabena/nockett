@@ -13,6 +13,8 @@ interface TicketCardProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ticket: any; // Update to handle the joined data structure
     onTicketUpdated: () => void;
+    updateTicketWithOptimism?: (ticketId: string, updates: any, serverUpdates: any) => Promise<void>;
+    deleteTicketWithOptimism?: (ticketId: string) => Promise<void>;
 }
 
 const statusColors = {
@@ -21,7 +23,7 @@ const statusColors = {
     CLOSED: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
 };
 
-export default function TicketCard({ ticket, onTicketUpdated }: TicketCardProps) {
+export default function TicketCard({ ticket, onTicketUpdated, updateTicketWithOptimism, deleteTicketWithOptimism }: TicketCardProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Extract the related data from the joined query - handle both array and object formats
@@ -114,6 +116,8 @@ export default function TicketCard({ ticket, onTicketUpdated }: TicketCardProps)
                 isOpen={isModalOpen}
                 onOpenChange={setIsModalOpen}
                 onTicketUpdated={onTicketUpdated}
+                updateTicketWithOptimism={updateTicketWithOptimism}
+                deleteTicketWithOptimism={deleteTicketWithOptimism}
             />
         </>
     );

@@ -142,6 +142,7 @@ export const PRIORITY_ICONS = {
   HIGH: IconlyArrowUpCircle,
   MAJOR: IconlyArrowUpCircle,
   CRITICAL: IconlyDangerCircle,
+  HIGHEST: IconlyDangerCircle,
   DEFAULT: IconlyInfoSquare,
 };
 
@@ -164,8 +165,11 @@ export const CATEGORY_ICONS = {
 
 export const PRIORITY_COLORS = {
   LOW: "#10B981", // Green
+  MINOR: "#10B981", // Green
   MEDIUM: "#F59E0B", // Yellow
   HIGH: "#EF4444", // Red
+  MAJOR: "#EF4444", // Red
+  HIGHEST: "#991B1B", // Darker Red
   CRITICAL: "#DC2626", // Dark Red
   DEFAULT: "#6B7280", // Gray
 };

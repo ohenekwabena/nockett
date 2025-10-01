@@ -2,18 +2,24 @@
 
 import { useState, useEffect } from "react";
 import TicketCard from "@/components/ui/new-ticket-card";
-import { ticketService, type Ticket } from "@/services/ticket-service";
 import { TicketsPageSkeleton } from "@/components/skeletons/tickets-page-skeleton";
 import SearchBar from "@/components/search-bar";
+import { useOptimisticTickets } from "@/hooks/use-optimistic-tickets";
 
 export default function TicketsPage() {
     const [currentPage, setCurrentPage] = useState(1);
-    const [tickets, setTickets] = useState<Ticket[]>([]);
-    const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [filteredTickets, setFilteredTickets] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const ticketsPerPage = 10;
+
+    const {
+        tickets,
+        loading,
+        error,
+        loadTickets,
+        updateTicketWithOptimism,
+        deleteTicketWithOptimism
+    } = useOptimisticTickets();
 
     useEffect(() => {
         loadTickets();
@@ -28,30 +34,17 @@ export default function TicketsPage() {
         return () => {
             window.removeEventListener('ticketCreated', handleTicketCreated);
         };
-    }, []);
+    }, [loadTickets]);
+
+    // Update filtered tickets when tickets change
+    useEffect(() => {
+        filterTicketsLocally(searchTerm);
+    }, [tickets, searchTerm]);
 
     // Reset to first page when search results change
     useEffect(() => {
         setCurrentPage(1);
     }, [filteredTickets]);
-
-    const loadTickets = async () => {
-        try {
-            setLoading(true);
-            const { data, error } = await ticketService.getTicketsWithDetails();
-            if (error) {
-                setError(error.message);
-            } else {
-                setTickets(data || []);
-                setFilteredTickets(data || []);
-            }
-        } catch (err) {
-            setError('Failed to load tickets');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const filterTicketsLocally = (term: string) => {
         if (!term.trim()) {
@@ -60,7 +53,6 @@ export default function TicketsPage() {
         }
 
         const searchLower = term.toLowerCase();
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
         const filtered = tickets.filter((ticket: any) => {
             // Search in basic ticket fields
             const matchesBasic =
@@ -107,7 +99,12 @@ export default function TicketsPage() {
 
     const handleSearch = (term: string) => {
         setSearchTerm(term);
-        filterTicketsLocally(term);
+    };
+
+    const handleTicketUpdated = () => {
+        // No need to reload tickets - optimistic updates handle this
+        // Just trigger a re-filter to update search results
+        filterTicketsLocally(searchTerm);
     };
 
     const totalPages = Math.ceil(filteredTickets.length / ticketsPerPage);
@@ -170,7 +167,13 @@ export default function TicketsPage() {
 
             <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 mb-8">
                 {currentTickets.map((ticket) => (
-                    <TicketCard key={ticket.id} ticket={ticket} onTicketUpdated={loadTickets} />
+                    <TicketCard
+                        key={ticket.id}
+                        ticket={ticket}
+                        onTicketUpdated={handleTicketUpdated}
+                        updateTicketWithOptimism={updateTicketWithOptimism}
+                        deleteTicketWithOptimism={deleteTicketWithOptimism}
+                    />
                 ))}
             </div>
 
