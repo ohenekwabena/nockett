@@ -44,7 +44,11 @@ export default function TicketCard({ ticket, onTicketUpdated, updateTicketWithOp
         ? ticket.users[0] || null
         : ticket.users || null;
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
+        // Prevent modal from opening when dragging
+        if (e.defaultPrevented) {
+            return;
+        }
         setIsModalOpen(!isModalOpen);
     };
 

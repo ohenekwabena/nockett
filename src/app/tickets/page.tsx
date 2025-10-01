@@ -5,12 +5,17 @@ import TicketCard from "@/components/ui/new-ticket-card";
 import { TicketsPageSkeleton } from "@/components/skeletons/tickets-page-skeleton";
 import SearchBar from "@/components/search-bar";
 import { useOptimisticTickets } from "@/hooks/use-optimistic-tickets";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TicketKanban } from "@/components/kanban/ticket-kanban";
+import TicketListTable from "@/components/ticket-list/ticket-list-table";
+import { LayoutGrid, List } from "lucide-react";
 
 export default function TicketsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [filteredTickets, setFilteredTickets] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeTab, setActiveTab] = useState("grid");
     const ticketsPerPage = 10;
 
     const {
@@ -105,9 +110,14 @@ export default function TicketsPage() {
     };
 
     const handleTicketUpdated = () => {
-        // No need to reload tickets - optimistic updates handle this
-        // Just trigger a re-filter to update search results
-        filterTicketsLocally(searchTerm);
+        // For kanban view, don't trigger re-filter immediately to avoid conflicts with optimistic updates
+        if (activeTab === "kanban") {
+            // Only reload tickets from server without re-filtering to maintain optimistic updates
+            loadTickets();
+        } else {
+            // For other views, trigger a re-filter to update search results
+            filterTicketsLocally(searchTerm);
+        }
     };
 
     const totalPages = Math.ceil(filteredTickets.length / ticketsPerPage);
@@ -142,7 +152,7 @@ export default function TicketsPage() {
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
                     {searchTerm ? (
                         <>
-                            Showing {startIndex + 1}-{Math.min(endIndex, filteredTickets.length)} of{" "}
+                            Showing {activeTab === "grid" ? `${startIndex + 1}-${Math.min(endIndex, filteredTickets.length)} of ` : ""}{" "}
                             {filteredTickets.length} tickets matching &ldquo;{searchTerm}&ldquo;
                             {filteredTickets.length !== tickets.length && (
                                 <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
@@ -152,7 +162,7 @@ export default function TicketsPage() {
                         </>
                     ) : (
                         <>
-                            Showing {startIndex + 1}-{Math.min(endIndex, filteredTickets.length)} of{" "}
+                            {activeTab === "grid" ? `Showing ${startIndex + 1}-${Math.min(endIndex, filteredTickets.length)} of ` : "Total "}{" "}
                             {filteredTickets.length} tickets
                         </>
                     )}
@@ -168,78 +178,171 @@ export default function TicketsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 mb-8">
-                {currentTickets.map((ticket) => (
-                    <TicketCard
-                        key={ticket.id}
-                        ticket={ticket}
-                        onTicketUpdated={handleTicketUpdated}
-                        updateTicketWithOptimism={updateTicketWithOptimism}
-                        deleteTicketWithOptimism={deleteTicketWithOptimism}
-                    />
-                ))}
-            </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 max-w-md mb-6">
+                    <TabsTrigger value="grid" className="flex items-center gap-2">
+                        <LayoutGrid className="w-4 h-4" />
+                        Grid
+                    </TabsTrigger>
+                    <TabsTrigger value="kanban" className="flex items-center gap-2">
+                        <LayoutGrid className="w-4 h-4" />
+                        Kanban
+                    </TabsTrigger>
+                    <TabsTrigger value="list" className="flex items-center gap-2">
+                        <List className="w-4 h-4" />
+                        List
+                    </TabsTrigger>
+                </TabsList>
 
-            {filteredTickets.length === 0 && (
-                <div className="text-center py-12">
-                    {searchTerm ? (
-                        <>
-                            <p className="text-gray-600 dark:text-gray-400 mb-4">
-                                No tickets found matching &ldquo;{searchTerm}&ldquo;
-                            </p>
-                            <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
-                                Try adjusting your search terms or clearing the search to see all tickets
-                            </p>
-                            <button
-                                onClick={() => handleSearch("")}
-                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                            >
-                                Clear search and show all tickets
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
-                            <p className="text-gray-500 dark:text-gray-500 text-sm">
-                                Click the &quot;Add New&quot; button in the top right to create your first ticket
-                            </p>
-                        </>
+                <TabsContent value="grid" className="space-y-6">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 mb-8">
+                        {currentTickets.map((ticket) => (
+                            <TicketCard
+                                key={ticket.id}
+                                ticket={ticket}
+                                onTicketUpdated={handleTicketUpdated}
+                                updateTicketWithOptimism={updateTicketWithOptimism}
+                                deleteTicketWithOptimism={deleteTicketWithOptimism}
+                            />
+                        ))}
+                    </div>
+
+                    {filteredTickets.length === 0 && (
+                        <div className="text-center py-12">
+                            {searchTerm ? (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                        No tickets found matching &ldquo;{searchTerm}&ldquo;
+                                    </p>
+                                    <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
+                                        Try adjusting your search terms or clearing the search to see all tickets
+                                    </p>
+                                    <button
+                                        onClick={() => handleSearch("")}
+                                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                    >
+                                        Clear search and show all tickets
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
+                                    <p className="text-gray-500 dark:text-gray-500 text-sm">
+                                        Click the &quot;Add New&quot; button in the top right to create your first ticket
+                                    </p>
+                                </>
+                            )}
+                        </div>
                     )}
-                </div>
-            )}
 
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2">
-                    <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                    >
-                        Previous
-                    </button>
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-2">
+                            <button
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                            >
+                                Previous
+                            </button>
 
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                            key={page}
-                            onClick={() => handlePageChange(page)}
-                            className={`px-3 py-2 rounded-lg transition-colors duration-200 ${currentPage === page
-                                ? "bg-blue-600 text-white"
-                                : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                                }`}
-                        >
-                            {page}
-                        </button>
-                    ))}
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => handlePageChange(page)}
+                                    className={`px-3 py-2 rounded-lg transition-colors duration-200 ${currentPage === page
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                        }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
 
-                    <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                    >
-                        Next
-                    </button>
-                </div>
-            )}
+                            <button
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="kanban" className="space-y-6">
+                    {filteredTickets.length === 0 ? (
+                        <div className="text-center py-12">
+                            {searchTerm ? (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                        No tickets found matching &ldquo;{searchTerm}&ldquo;
+                                    </p>
+                                    <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
+                                        Try adjusting your search terms or clearing the search to see all tickets
+                                    </p>
+                                    <button
+                                        onClick={() => handleSearch("")}
+                                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                    >
+                                        Clear search and show all tickets
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
+                                    <p className="text-gray-500 dark:text-gray-500 text-sm">
+                                        Click the &quot;Add New&quot; button in the top right to create your first ticket
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <TicketKanban
+                            tickets={filteredTickets}
+                            onTicketUpdated={handleTicketUpdated}
+                            updateTicketWithOptimism={updateTicketWithOptimism}
+                            deleteTicketWithOptimism={deleteTicketWithOptimism}
+                        />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="list" className="space-y-6">
+                    {filteredTickets.length === 0 ? (
+                        <div className="text-center py-12">
+                            {searchTerm ? (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                        No tickets found matching &ldquo;{searchTerm}&ldquo;
+                                    </p>
+                                    <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
+                                        Try adjusting your search terms or clearing the search to see all tickets
+                                    </p>
+                                    <button
+                                        onClick={() => handleSearch("")}
+                                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                    >
+                                        Clear search and show all tickets
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">No tickets found</p>
+                                    <p className="text-gray-500 dark:text-gray-500 text-sm">
+                                        Click the &quot;Add New&quot; button in the top right to create your first ticket
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <TicketListTable
+                            tickets={filteredTickets}
+                            onTicketUpdated={handleTicketUpdated}
+                            updateTicketWithOptimism={updateTicketWithOptimism}
+                            deleteTicketWithOptimism={deleteTicketWithOptimism}
+                        />
+                    )}
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
