@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import TicketCard from '@/components/ui/new-ticket-card';
+import TicketCard from '@/components/cards/ticket-card';
 import { StatCard } from "@/components/cards/stat-card";
 import { ticketService } from "@/services/ticket-service";
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";

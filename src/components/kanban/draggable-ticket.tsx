@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import TicketCard from '../ui/new-ticket-card';
+import TicketCard from '../cards/ticket-card';
 
 interface DraggableTicketProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

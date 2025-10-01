@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import TicketCard from "@/components/ui/new-ticket-card";
+import TicketCard from "@/components/cards/ticket-card";
 import { TicketsPageSkeleton } from "@/components/skeletons/tickets-page-skeleton";
 import SearchBar from "@/components/search-bar";
 import { useOptimisticTickets } from "@/hooks/use-optimistic-tickets";

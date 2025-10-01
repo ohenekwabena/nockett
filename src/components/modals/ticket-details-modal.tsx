@@ -15,7 +15,6 @@ import {
     STATUSES
 } from "@/utils/constants";
 import { IconlyEditSquare, IconlyDelete } from "../icons";
-import CreateTicketModal from "./create-ticket-modal";
 import { Textarea } from "../ui/textarea";
 import { Input } from "../ui/input";
 import useSupabase from "@/hooks/use-supabase";

@@ -175,9 +175,9 @@ export const PRIORITY_COLORS = {
 };
 
 export const STATUS_COLORS = {
-  OPEN: "#3B82F6", // Blue
-  IN_PROGRESS: "#FBBF24", // Yellow
-  CLOSED: "#10B981", // Green
+  OPEN: "#FBBF24", // Yellow
+  IN_PROGRESS: "#10B981", // Green
+  CLOSED: "#6B7280", // Blue
   DEFAULT: "#6B7280", // Gray
 };
 

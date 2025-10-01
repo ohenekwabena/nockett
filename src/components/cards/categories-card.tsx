@@ -80,7 +80,7 @@ export default function CategoriesCard() {
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                         {category.name}
                                     </span>
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge variant="secondary" className="text-xs text-gray-600/40 dark:text-gray-300/60">
                                         {category.id}
                                     </Badge>
                                 </div>

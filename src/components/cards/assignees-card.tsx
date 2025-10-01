@@ -71,7 +71,7 @@ export default function AssigneesCard() {
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                         {assignee.name}
                                     </span>
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge variant="secondary" className="text-xs text-gray-600/40 dark:text-gray-300/60 ">
                                         {assignee.id}
                                     </Badge>
                                 </div>

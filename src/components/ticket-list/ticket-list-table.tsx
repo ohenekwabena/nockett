@@ -6,7 +6,7 @@ import { capitalizeString } from "@/utils/functions";
 import PersonEntityAvatar from "@/components/person-entity-avatar";
 import TicketModal from "@/components/modals/ticket-details-modal";
 import { ChevronUp, ChevronDown, FlagIcon, Calendar, User, AlertCircle } from "lucide-react";
-import { STATUS_COLORS } from "@/utils/constants";
+import { STATUS_COLORS, PRIORITY_COLORS } from "@/utils/constants";
 
 interface TicketListTableProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -250,10 +250,10 @@ export default function TicketListTable({
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
                                                 <AlertCircle
-                                                    className={`w-4 h-4 ${priority?.toUpperCase() === 'HIGH' ? 'text-red-500' :
-                                                        priority?.toUpperCase() === 'MEDIUM' ? 'text-yellow-500' :
-                                                            'text-green-500'
-                                                        }`}
+                                                    className="w-4 h-4"
+                                                    style={{
+                                                        color: PRIORITY_COLORS[priority?.toUpperCase() as keyof typeof PRIORITY_COLORS] || PRIORITY_COLORS.DEFAULT
+                                                    }}
                                                 />
                                                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                                     {capitalizeString(priority || "None")}

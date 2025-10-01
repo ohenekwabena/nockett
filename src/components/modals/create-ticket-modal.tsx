@@ -127,6 +127,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
                 priority_id: priorityObj?.id,
                 category_id: categoryObj?.id,
                 assignee_id: assigneeId && assigneeId !== "unassigned" ? parseInt(assigneeId) : undefined,
+                creator_id: user?.id, // Add the logged in user's ID as creator
             };
 
             let result;
@@ -135,14 +136,7 @@ export default function CreateTicketModal({ isOpen, onOpenChange, onTicketCreate
 
                 // If ticket was created successfully and there's an initial note, add it
                 if (!result.error && result.data && initialNote.trim()) {
-                    // Try to create note with user_id first
-                    await ticketService.createTicketNote({
-                        ticket_id: result.data.id,
-                        content: initialNote.trim(),
-                        user_id: user?.id
-                    });
-
-                    // Retry creating the note
+                    // Create the note once
                     await ticketService.createTicketNote({
                         ticket_id: result.data.id,
                         content: initialNote.trim(),
