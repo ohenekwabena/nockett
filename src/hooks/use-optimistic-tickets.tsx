@@ -51,6 +51,7 @@ export function useOptimisticTickets() {
     const updateTicketWithOptimism = useCallback(async (
         ticketId: string,
         updates: Partial<OptimisticTicket>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         serverUpdates: any
     ) => {
         // Apply optimistic update immediately

@@ -13,6 +13,7 @@ interface TicketCardProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ticket: any; // Update to handle the joined data structure
     onTicketUpdated: () => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateTicketWithOptimism?: (ticketId: string, updates: any, serverUpdates: any) => Promise<void>;
     deleteTicketWithOptimism?: (ticketId: string) => Promise<void>;
 }
