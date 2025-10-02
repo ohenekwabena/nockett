@@ -5,6 +5,7 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { IconlySearch, IconlyCloseSquare } from "./icons";
 import { useTheme } from "./ui/theme-provider";
+import { RotateCcw } from "lucide-react";
 
 interface SearchBarProps {
     onSearch: (searchTerm: string) => void;
@@ -63,6 +64,15 @@ export default function SearchBar({
                     </button>
                 )}
             </div>
+            {searchTerm && (
+                <button
+                    onClick={handleClear}
+                    className=" p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                    title="Clear search"
+                >
+                    <RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
+            )}
             <Button
                 onClick={handleSearch}
                 disabled={isLoading || !searchTerm.trim()}

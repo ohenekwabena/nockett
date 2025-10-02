@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import TicketCard from "@/components/cards/ticket-card";
 import { TicketsPageSkeleton } from "@/components/skeletons/tickets-page-skeleton";
 import SearchBar from "@/components/search-bar";
+import FilterPopup from "@/components/filter-popup";
 import { useOptimisticTickets } from "@/hooks/use-optimistic-tickets";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TicketKanban } from "@/components/kanban/ticket-kanban";
@@ -16,6 +17,11 @@ export default function TicketsPage() {
     const [filteredTickets, setFilteredTickets] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("grid");
+    const [filters, setFilters] = useState({
+        statuses: [] as string[],
+        categories: [] as string[],
+        priorities: [] as string[]
+    });
     const ticketsPerPage = 10;
 
     const {
@@ -42,71 +48,105 @@ export default function TicketsPage() {
         };
     }, [loadTickets]);
 
-    // Update filtered tickets when tickets change
+    // Update filtered tickets when tickets or filters change
     useEffect(() => {
-        filterTicketsLocally(searchTerm);
+        filterTicketsLocally(searchTerm, filters);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tickets, searchTerm]);
+    }, [tickets, searchTerm, filters]);
 
     // Reset to first page when search results change
     useEffect(() => {
         setCurrentPage(1);
     }, [filteredTickets]);
 
-    const filterTicketsLocally = (term: string) => {
-        if (!term.trim()) {
-            setFilteredTickets(tickets);
-            return;
+    const filterTicketsLocally = (term: string, currentFilters = filters) => {
+        let filtered = tickets;
+
+        // Apply search term filter
+        if (term.trim()) {
+            const searchLower = term.toLowerCase();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            filtered = filtered.filter((ticket: any) => {
+                // Search in basic ticket fields
+                const matchesBasic =
+                    ticket.id?.toLowerCase().includes(searchLower) ||
+                    ticket.title?.toLowerCase().includes(searchLower) ||
+                    ticket.description?.toLowerCase().includes(searchLower) ||
+                    ticket.status?.toLowerCase().includes(searchLower) ||
+                    ticket.site?.toLowerCase().includes(searchLower) ||
+                    ticket.system?.toLowerCase().includes(searchLower) ||
+                    ticket.error_code?.toLowerCase().includes(searchLower) ||
+                    ticket.ticket_number?.toLowerCase().includes(searchLower);
+
+                // Search in category
+                const categoryName = Array.isArray(ticket.ticket_categories)
+                    ? ticket.ticket_categories[0]?.name
+                    : ticket.ticket_categories?.name;
+                const matchesCategory = categoryName?.toLowerCase().includes(searchLower);
+
+                // Search in priority
+                const priorityName = Array.isArray(ticket.ticket_priorities)
+                    ? ticket.ticket_priorities[0]?.name
+                    : ticket.ticket_priorities?.name;
+                const matchesPriority = priorityName?.toLowerCase().includes(searchLower);
+
+                // Search in assignee
+                const assigneeName = Array.isArray(ticket.assignee)
+                    ? ticket.assignee[0]?.name
+                    : ticket.assignee?.name;
+                const matchesAssignee = assigneeName?.toLowerCase().includes(searchLower);
+
+                // Search in creator
+                const creatorData = Array.isArray(ticket.users)
+                    ? ticket.users[0]
+                    : ticket.users;
+                const matchesCreator =
+                    creatorData?.name?.toLowerCase().includes(searchLower) ||
+                    creatorData?.email?.toLowerCase().includes(searchLower);
+
+                return matchesBasic || matchesCategory || matchesPriority || matchesAssignee || matchesCreator;
+            });
         }
 
-        const searchLower = term.toLowerCase();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const filtered = tickets.filter((ticket: any) => {
-            // Search in basic ticket fields
-            const matchesBasic =
-                ticket.id?.toLowerCase().includes(searchLower) ||
-                ticket.title?.toLowerCase().includes(searchLower) ||
-                ticket.description?.toLowerCase().includes(searchLower) ||
-                ticket.status?.toLowerCase().includes(searchLower) ||
-                ticket.site?.toLowerCase().includes(searchLower) ||
-                ticket.system?.toLowerCase().includes(searchLower) ||
-                ticket.error_code?.toLowerCase().includes(searchLower) ||
-                ticket.ticket_number?.toLowerCase().includes(searchLower);
+        // Apply status filter
+        if (currentFilters.statuses.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            filtered = filtered.filter((ticket: any) =>
+                currentFilters.statuses.includes(ticket.status)
+            );
+        }
 
-            // Search in category
-            const categoryName = Array.isArray(ticket.ticket_categories)
-                ? ticket.ticket_categories[0]?.name
-                : ticket.ticket_categories?.name;
-            const matchesCategory = categoryName?.toLowerCase().includes(searchLower);
+        // Apply category filter
+        if (currentFilters.categories.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            filtered = filtered.filter((ticket: any) => {
+                const categoryName = Array.isArray(ticket.ticket_categories)
+                    ? ticket.ticket_categories[0]?.name?.toUpperCase()
+                    : ticket.ticket_categories?.name?.toUpperCase();
+                return categoryName && currentFilters.categories.includes(categoryName);
+            });
+        }
 
-            // Search in priority
-            const priorityName = Array.isArray(ticket.ticket_priorities)
-                ? ticket.ticket_priorities[0]?.name
-                : ticket.ticket_priorities?.name;
-            const matchesPriority = priorityName?.toLowerCase().includes(searchLower);
-
-            // Search in assignee
-            const assigneeName = Array.isArray(ticket.assignee)
-                ? ticket.assignee[0]?.name
-                : ticket.assignee?.name;
-            const matchesAssignee = assigneeName?.toLowerCase().includes(searchLower);
-
-            // Search in creator
-            const creatorData = Array.isArray(ticket.users)
-                ? ticket.users[0]
-                : ticket.users;
-            const matchesCreator =
-                creatorData?.name?.toLowerCase().includes(searchLower) ||
-                creatorData?.email?.toLowerCase().includes(searchLower);
-
-            return matchesBasic || matchesCategory || matchesPriority || matchesAssignee || matchesCreator;
-        });
+        // Apply priority filter
+        if (currentFilters.priorities.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            filtered = filtered.filter((ticket: any) => {
+                const priorityName = Array.isArray(ticket.ticket_priorities)
+                    ? ticket.ticket_priorities[0]?.name?.toUpperCase()
+                    : ticket.ticket_priorities?.name?.toUpperCase();
+                return priorityName && currentFilters.priorities.includes(priorityName);
+            });
+        }
 
         setFilteredTickets(filtered);
     };
 
     const handleSearch = (term: string) => {
         setSearchTerm(term);
+    };
+
+    const handleFiltersChange = (newFilters: typeof filters) => {
+        setFilters(newFilters);
     };
 
     const handleTicketUpdated = () => {
@@ -128,6 +168,8 @@ export default function TicketsPage() {
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
     };
+
+    const hasActiveFilters = filters.statuses.length > 0 || filters.categories.length > 0 || filters.priorities.length > 0;
 
     if (loading) {
         return <TicketsPageSkeleton />;
@@ -196,13 +238,21 @@ export default function TicketsPage() {
                             </TabsTrigger>
                         </TabsList>
                     </div>
-                    <div className="flex justify-center items-center w-fit">
-                        <SearchBar
-                            onSearch={handleSearch}
-                            placeholder="Search by ticket ID, title, description, assignee, creator, status..."
-                            className="max-w-2xl w-fit sm:w-[480px]"
-                            isLoading={false}
-                        />
+                    <div className="flex justify-center items-center flex-col sm:flex-row gap-3 w-fit">
+                        <div className="relative">
+                            <SearchBar
+                                onSearch={handleSearch}
+                                placeholder="Search by ticket ID, title, description, assignee, creator, status..."
+                                className="max-w-2xl w-fit sm:w-[480px]"
+                                isLoading={false}
+                            />
+                        </div>
+                        <div className="ml-auto sm:mr-0">
+                            <FilterPopup
+                                onFiltersChange={handleFiltersChange}
+                                initialFilters={filters}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -221,20 +271,33 @@ export default function TicketsPage() {
 
                     {filteredTickets.length === 0 && (
                         <div className="text-center py-12">
-                            {searchTerm ? (
+                            {searchTerm || hasActiveFilters ? (
                                 <>
                                     <p className="text-gray-600 dark:text-gray-400 mb-4">
-                                        No tickets found matching &ldquo;{searchTerm}&ldquo;
+                                        No tickets found matching your search{hasActiveFilters ? ' and filters' : ''}
+                                        {searchTerm && <> for &ldquo;{searchTerm}&ldquo;</>}
                                     </p>
                                     <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
-                                        Try adjusting your search terms or clearing the search to see all tickets
+                                        Try adjusting your search terms{hasActiveFilters ? ' or filters' : ''} to see more results
                                     </p>
-                                    <button
-                                        onClick={() => handleSearch("")}
-                                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                                    >
-                                        Clear search and show all tickets
-                                    </button>
+                                    <div className="flex gap-2 justify-center">
+                                        {searchTerm && (
+                                            <button
+                                                onClick={() => handleSearch("")}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                            >
+                                                Clear search
+                                            </button>
+                                        )}
+                                        {hasActiveFilters && (
+                                            <button
+                                                onClick={() => handleFiltersChange({ statuses: [], categories: [], priorities: [] })}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                            >
+                                                Clear filters
+                                            </button>
+                                        )}
+                                    </div>
                                 </>
                             ) : (
                                 <>
@@ -284,20 +347,33 @@ export default function TicketsPage() {
                 <TabsContent value="kanban" className="space-y-6">
                     {filteredTickets.length === 0 ? (
                         <div className="text-center py-12">
-                            {searchTerm ? (
+                            {searchTerm || hasActiveFilters ? (
                                 <>
                                     <p className="text-gray-600 dark:text-gray-400 mb-4">
-                                        No tickets found matching &ldquo;{searchTerm}&ldquo;
+                                        No tickets found matching your search{hasActiveFilters ? ' and filters' : ''}
+                                        {searchTerm && <> for &ldquo;{searchTerm}&ldquo;</>}
                                     </p>
                                     <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
-                                        Try adjusting your search terms or clearing the search to see all tickets
+                                        Try adjusting your search terms{hasActiveFilters ? ' or filters' : ''} to see more results
                                     </p>
-                                    <button
-                                        onClick={() => handleSearch("")}
-                                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                                    >
-                                        Clear search and show all tickets
-                                    </button>
+                                    <div className="flex gap-2 justify-center">
+                                        {searchTerm && (
+                                            <button
+                                                onClick={() => handleSearch("")}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                            >
+                                                Clear search
+                                            </button>
+                                        )}
+                                        {hasActiveFilters && (
+                                            <button
+                                                onClick={() => handleFiltersChange({ statuses: [], categories: [], priorities: [] })}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                            >
+                                                Clear filters
+                                            </button>
+                                        )}
+                                    </div>
                                 </>
                             ) : (
                                 <>
@@ -321,20 +397,33 @@ export default function TicketsPage() {
                 <TabsContent value="list" className="space-y-6">
                     {filteredTickets.length === 0 ? (
                         <div className="text-center py-12">
-                            {searchTerm ? (
+                            {searchTerm || hasActiveFilters ? (
                                 <>
                                     <p className="text-gray-600 dark:text-gray-400 mb-4">
-                                        No tickets found matching &ldquo;{searchTerm}&ldquo;
+                                        No tickets found matching your search{hasActiveFilters ? ' and filters' : ''}
+                                        {searchTerm && <> for &ldquo;{searchTerm}&ldquo;</>}
                                     </p>
                                     <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
-                                        Try adjusting your search terms or clearing the search to see all tickets
+                                        Try adjusting your search terms{hasActiveFilters ? ' or filters' : ''} to see more results
                                     </p>
-                                    <button
-                                        onClick={() => handleSearch("")}
-                                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                                    >
-                                        Clear search and show all tickets
-                                    </button>
+                                    <div className="flex gap-2 justify-center">
+                                        {searchTerm && (
+                                            <button
+                                                onClick={() => handleSearch("")}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                            >
+                                                Clear search
+                                            </button>
+                                        )}
+                                        {hasActiveFilters && (
+                                            <button
+                                                onClick={() => handleFiltersChange({ statuses: [], categories: [], priorities: [] })}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                                            >
+                                                Clear filters
+                                            </button>
+                                        )}
+                                    </div>
                                 </>
                             ) : (
                                 <>

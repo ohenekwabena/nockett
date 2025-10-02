@@ -1,3 +1,4 @@
+export { IconlyFilter } from "./filter";
 export { IconlyStar } from "./star";
 export { IconlyDangerCircle } from "./danger";
 export { IconlyCloseSquare } from "./close";
