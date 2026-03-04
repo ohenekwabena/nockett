@@ -7,7 +7,16 @@ module.exports = {
   ],
   darkMode: "class",
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary: "#1d4fd7",
+        "background-light": "#f6f6f8",
+        "background-dark": "#111521",
+      },
+      fontFamily: {
+        display: ["Inter", "sans-serif"],
+      },
+    },
   },
   plugins: [],
 };
