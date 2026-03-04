@@ -147,7 +147,7 @@ export default function FilterPopup({ onFiltersChange, initialFilters }: FilterP
                                     />
                                     <label
                                         htmlFor={`status-${status}`}
-                                        className="text-sm cursor-pointer flex items-center gap-2"
+                                        className="text-sm cursor-pointer flex items-center gap-2 text-gray-900 dark:text-gray-100"
                                     >
                                         <div
                                             className="w-2 h-2 rounded-full"
@@ -175,7 +175,7 @@ export default function FilterPopup({ onFiltersChange, initialFilters }: FilterP
                                     />
                                     <label
                                         htmlFor={`category-${category.id}`}
-                                        className="text-sm cursor-pointer"
+                                        className="text-sm cursor-pointer text-gray-900 dark:text-gray-100"
                                     >
                                         {capitalizeString(category.name)}
                                     </label>
@@ -199,7 +199,7 @@ export default function FilterPopup({ onFiltersChange, initialFilters }: FilterP
                                     />
                                     <label
                                         htmlFor={`priority-${priority.id}`}
-                                        className="text-sm cursor-pointer flex items-center gap-2"
+                                        className="text-sm cursor-pointer flex items-center gap-2 text-gray-900 dark:text-gray-100"
                                     >
                                         <div
                                             className="w-2 h-2 rounded-full"
