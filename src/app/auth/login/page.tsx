@@ -79,12 +79,14 @@ export default function LoginPage() {
       <div className="relative z-10">
         {/* Header */}
         <div className="flex flex-col items-center px-6 pt-16 pb-8">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary dark:text-white text-gray-600 shadow-lg shadow-primary/30">
-            <span className="material-symbols-outlined text-4xl">confirmation_number</span>
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-primary dark:text-white text-gray-600 shadow-lg shadow-primary/30 p-4">
+            <div className="flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl">confirmation_number</span>
+            </div>
+            <h1 className="text-gray-900 dark:text-gray-100 text-3xl font-bold leading-tight tracking-tight text-center">
+              Nockett
+            </h1>
           </div>
-          <h1 className="text-gray-900 dark:text-gray-100 text-3xl font-bold leading-tight tracking-tight text-center">
-            Nockett
-          </h1>
           <p className="text-gray-600 dark:text-gray-400 text-base font-normal leading-normal mt-2 text-center">
             Sign in to manage your tickets
           </p>
@@ -169,21 +171,11 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-4 flex h-14 w-full items-center justify-center rounded-xl bg-primary text-base font-bold transition-all active:scale-95 hover:bg- hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 dark:text-white text-gray-600 cursor-pointer"
+            className="mt-4 flex h-14 w-full items-center justify-center rounded-xl dark:bg-white bg-slate-800 text-base font-bold transition-all active:scale-95 hover:bg- hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-white dark:text-gray-600 cursor-pointer"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-
-        {/* Sign Up Link */}
-        <div className="mt-8 px-6 pb-12 text-center max-w-[480px] mx-auto w-full">
-          <p className="text-gray-700 dark:text-gray-400 text-sm">
-            Don&apos;t have an account?{" "}
-            <a href="#" className="text-primary font-bold hover:underline">
-              Create Account
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );
