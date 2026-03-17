@@ -48,7 +48,7 @@ export function InviteUserCard() {
         <input
           type="email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           className="rounded-lg border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 focus:outline-0 focus:ring-2 focus:ring-primary"
           placeholder="user@email.com"
           required

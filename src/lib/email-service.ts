@@ -1,4 +1,3 @@
-
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { TicketCreatedEmail, TicketCreatedEmailProps } from "../emails/TicketCreatedEmail";
