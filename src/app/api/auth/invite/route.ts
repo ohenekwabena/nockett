@@ -6,7 +6,7 @@ import { createClient } from "@/api/supabase/server";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { email, adminName } = body;
+  const { email, adminName, role } = body;
   if (!email) {
     return NextResponse.json({ error: "Email required" }, { status: 400 });
   }
@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       token,
       expires_at: expiresAt.toISOString(),
       used: false,
+      role: role || "user",
     },
   ]);
   if (dbError) {

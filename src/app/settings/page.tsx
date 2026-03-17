@@ -1,7 +1,12 @@
 "use client";
 import { InviteUserCard } from "@/components/cards/invite-user-card";
+import useSupabase from "@/hooks/use-supabase";
 
 export default function SettingsPage() {
+  const { user, role } = useSupabase();
+
+  const userRole = role || (user?.user_metadata?.role as string) || null;
+
   return (
     <div className="flex">
       <div className="pr-6 mt-10">
@@ -16,10 +21,11 @@ export default function SettingsPage() {
         {/* Settings content goes here */}
 
         {/* Invite User Card Integration */}
-        <div className="mb-10">
-          {/* Only show to admins if you have role logic, otherwise show to all */}
-          <InviteUserCard />
-        </div>
+        {userRole?.toLowerCase() === "admin" && (
+          <div className="mb-10">
+            <InviteUserCard />
+          </div>
+        )}
       </div>
     </div>
   );

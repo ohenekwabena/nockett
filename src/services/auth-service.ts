@@ -12,6 +12,7 @@ export interface SignUpData {
   firstName?: string;
   lastName?: string;
   inviteToken?: string;
+  role?: string;
 }
 
 export interface SignInData {
@@ -25,7 +26,7 @@ export class AuthService {
   /**
    * Sign up a new user with email and password
    */
-  async signUp({ email, password, firstName, lastName, inviteToken }: SignUpData): Promise<AuthResponse> {
+  async signUp({ email, password, firstName, lastName, inviteToken, role }: SignUpData): Promise<AuthResponse> {
     try {
       // You can use inviteToken here if needed for backend logic or pass it to Supabase metadata
       const { data, error } = await this.supabase.auth.signUp({
@@ -45,20 +46,31 @@ export class AuthService {
       if (data.user && !error) {
         const userId = data.user.id;
         const fullName = firstName && lastName ? `${firstName} ${lastName}` : email;
-        const { error: insertError } = await this.supabase.from("users").insert([
-          {
-            id: userId,
-            name: fullName,
-            email,
-            // department_id: null, // Optionally set if available
-            // image_url: '', // Optionally set if available
-          },
-        ]);
-        if (insertError) {
-          return {
-            user: data.user,
-            error: insertError,
-          };
+        // Default role to 'user' if not provided
+        const userRole = role || "user";
+        // Check if user already exists
+        const { data: existing, error: selectError } = await this.supabase
+          .from("users")
+          .select("id")
+          .eq("id", userId)
+          .single();
+        if (!existing) {
+          const { error: insertError } = await this.supabase.from("users").insert([
+            {
+              id: userId,
+              name: fullName,
+              email,
+              role: userRole,
+              // department_id: null, // Optionally set if available
+              // image_url: '', // Optionally set if available
+            },
+          ]);
+          if (insertError) {
+            return {
+              user: data.user,
+              error: insertError,
+            };
+          }
         }
       }
 

@@ -1,7 +1,10 @@
 import React, { useState } from "react";
+import { Input } from "../ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 export function InviteUserCard() {
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState("user");
   const [loading, setLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +20,7 @@ export function InviteUserCard() {
       const res = await fetch("/api/auth/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, role }),
       });
       const data = await res.json();
       if (!res.ok || !data.token) {
@@ -45,15 +48,37 @@ export function InviteUserCard() {
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-md p-6 mb-8 border border-gray-200 dark:border-gray-700 max-w-md w-full mx-auto">
       <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">Invite a User</h2>
       <form onSubmit={handleInvite} className="flex flex-col gap-3">
-        <input
+        <Input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded-lg border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 focus:outline-0 focus:ring-2 focus:ring-primary"
+          className="rounded-lg border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 focus:outline-0 focus:ring-2 focus:ring-primary pr-3"
           placeholder="user@email.com"
           required
           disabled={loading}
         />
+        <div>
+          <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Role</label>
+          <Select value={role} onValueChange={setRole} disabled={loading}>
+            <SelectTrigger className="rounded-lg border border-gray-300 dark:border-gray-700 p-2 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 focus:outline-0 focus:ring-2 focus:ring-primary">
+              <SelectValue placeholder="Select role" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+              <SelectItem
+                value="user"
+                className="text-gray-900 dark:text-gray-100 data-[highlighted]:bg-gray-100 dark:data-[highlighted]:bg-gray-700"
+              >
+                User
+              </SelectItem>
+              <SelectItem
+                value="admin"
+                className="text-gray-900 dark:text-gray-100 data-[highlighted]:bg-gray-100 dark:data-[highlighted]:bg-gray-700"
+              >
+                Admin
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <button
           type="submit"
           disabled={loading}
@@ -66,7 +91,7 @@ export function InviteUserCard() {
       {inviteLink && (
         <div className="mt-4">
           <div className="flex items-center gap-2">
-            <input
+            <Input
               type="text"
               value={inviteLink}
               readOnly

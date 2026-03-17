@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [inviteValid, setInviteValid] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [role, setRole] = useState<string>("user");
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
@@ -37,6 +38,7 @@ export default function SignupPage() {
         setInviteValid(true);
         setInviteEmail(data.email);
         setEmail(data.email);
+        if (data.role) setRole(data.role);
       }
     });
   }, [inviteToken]);
@@ -62,6 +64,7 @@ export default function SignupPage() {
         firstName,
         lastName,
         inviteToken,
+        role,
       });
       if (signUpError) {
         setError(signUpError.message);
@@ -84,7 +87,20 @@ export default function SignupPage() {
       {/* Background SVG Pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">{/* ...existing code... */}</div>
       <div className="relative z-10">
-        <div className="flex flex-col items-center px-6 pt-16 pb-8">{/* ...existing code... */}</div>
+        <div className="flex flex-col items-center px-6 pt-16 pb-8">
+          <div
+            className="flex items-center justify-center gap-2 rounded-2xl bg-primary dark:text-white text-gray-600 shadow-lg shadow-primary/30 p-4 cursor-pointer"
+            onClick={() => router.push("/auth/login")}
+          >
+            <div className="flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl">confirmation_number</span>
+            </div>
+            <h1 className="text-gray-900 dark:text-gray-100 text-3xl font-bold leading-tight tracking-tight text-center">
+              Nockett
+            </h1>
+          </div>
+        </div>
+
         {error && (
           <div className="px-6 mb-4 max-w-[480px] mx-auto w-full">
             <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-300 rounded-xl text-sm">

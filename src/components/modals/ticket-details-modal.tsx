@@ -165,7 +165,8 @@ export default function TicketModal({
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [detectionSources, setDetectionSources] = useState<DetectionSource[]>([]);
   const [trafficImpacts, setTrafficImpacts] = useState<TrafficImpact[]>([]);
-  const { user } = useSupabase();
+  const { user, role } = useSupabase();
+  const isAdmin = role?.toLowerCase() === "admin";
 
   // Refetch ticket from database to get latest values
   const refreshTicketData = async () => {
@@ -173,11 +174,22 @@ export default function TicketModal({
     try {
       const { data, error } = await ticketService.getTicketById(ticket.id);
       if (data && !error) {
+        const matchedPriority = priorities.find((p) => p.id === data.priority_id);
+        const matchedCategory = categories.find((c) => c.id === data.category_id);
+        const resolvedPriority = matchedPriority?.name?.toUpperCase() as
+          | TicketModalProps["ticket"]["priority"]
+          | undefined;
+
         // Update local state with fresh data from database
         setStatus(data.status || "OPEN");
-        setPriority(data.priority || "LOW");
-        setCategory(data.category || "");
-        setAssigneeId(data.assigneeId || "");
+        setPriority(resolvedPriority || ticket.priority || priority);
+        setCategory(
+          matchedCategory?.name?.toUpperCase() ||
+            (data as { category?: string }).category ||
+            ticket.category ||
+            category,
+        );
+        setAssigneeId(data.assignee_id ? data.assignee_id.toString() : ticket.assignee?.id || assigneeId);
         setEditedTitle(data.title);
         setEditedDescription(data.description || "");
         setIncidentDate(data.incidentDate || "");
@@ -223,6 +235,13 @@ export default function TicketModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, ticket]);
+
+  useEffect(() => {
+    if (isOpen && ticket.id && (priorities.length > 0 || categories.length > 0 || assignees.length > 0)) {
+      refreshTicketData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, ticket.id, priorities, categories, assignees]);
 
   const loadDropdownData = async () => {
     try {
@@ -572,6 +591,10 @@ export default function TicketModal({
 
   const handleDelete = async () => {
     if (!ticket.id) return;
+    if (!isAdmin) {
+      toast.error("Only admins can delete tickets");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -837,16 +860,18 @@ export default function TicketModal({
                 </div>
               )}
             </div>
-            <div className="flex gap-2 items-center justify-center">
-              <Button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center sm:space-x-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm cursor-pointer"
-                disabled={loading}
-              >
-                <IconlyDelete color="white" size={16} />
-                <span className="hidden sm:inline-block">Delete</span>
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex gap-2 items-center justify-center">
+                <Button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center sm:space-x-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm cursor-pointer"
+                  disabled={loading}
+                >
+                  <IconlyDelete color="white" size={16} />
+                  <span className="hidden sm:inline-block">Delete</span>
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 mb-4">
             {priority && (
@@ -886,7 +911,7 @@ export default function TicketModal({
           </div>
         </DialogHeader>
 
-        {showDeleteConfirm && (
+        {isAdmin && showDeleteConfirm && (
           <div className="mx-4 sm:mx-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex-shrink-0">
             <h4 className="text-red-800 dark:text-red-200 font-semibold mb-2">Confirm Delete</h4>
             <p className="text-red-700 dark:text-red-300 text-sm mb-3">
@@ -896,11 +921,15 @@ export default function TicketModal({
               <Button
                 onClick={handleDelete}
                 disabled={loading}
-                className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1"
+                className="bg-red-600 hover:bg-red-700 text-white  text-sm px-3 py-1"
               >
                 {loading ? "Deleting..." : "Delete"}
               </Button>
-              <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" className="text-sm px-3 py-1">
+              <Button
+                onClick={() => setShowDeleteConfirm(false)}
+                variant="outline"
+                className="text-sm text-white hover:bg-slate-800 px-3 py-1"
+              >
                 Cancel
               </Button>
             </div>
@@ -1738,10 +1767,7 @@ export default function TicketModal({
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
-                                        <AlertDialogCancel
-                                          className="bg-gray-100 dark:bg-gray-700 text-gray-900 
-                                                                                    hover:text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        >
+                                        <AlertDialogCancel className="bg-gray-100 dark:bg-gray-700 text-gray-900 hover:text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600">
                                           Cancel
                                         </AlertDialogCancel>
                                         <AlertDialogAction
