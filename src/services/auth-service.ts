@@ -1,9 +1,9 @@
 import { createClient } from "@/api/supabase/client";
-import { AuthError, User } from "@supabase/supabase-js";
+import { AuthError, PostgrestError, User } from "@supabase/supabase-js";
 
 export interface AuthResponse {
   user?: User | null;
-  error?: AuthError | null;
+  error?: AuthError | null | PostgrestError;
 }
 
 export interface SignUpData {
@@ -11,6 +11,7 @@ export interface SignUpData {
   password: string;
   firstName?: string;
   lastName?: string;
+  inviteToken?: string;
 }
 
 export interface SignInData {
@@ -24,8 +25,9 @@ export class AuthService {
   /**
    * Sign up a new user with email and password
    */
-  async signUp({ email, password, firstName, lastName }: SignUpData): Promise<AuthResponse> {
+  async signUp({ email, password, firstName, lastName, inviteToken }: SignUpData): Promise<AuthResponse> {
     try {
+      // You can use inviteToken here if needed for backend logic or pass it to Supabase metadata
       const { data, error } = await this.supabase.auth.signUp({
         email,
         password,
@@ -34,9 +36,31 @@ export class AuthService {
             first_name: firstName,
             last_name: lastName,
             full_name: firstName && lastName ? `${firstName} ${lastName}` : undefined,
+            invite_token: inviteToken, // Optionally store inviteToken in user metadata
           },
         },
       });
+
+      // Insert into public.users if signup succeeded
+      if (data.user && !error) {
+        const userId = data.user.id;
+        const fullName = firstName && lastName ? `${firstName} ${lastName}` : email;
+        const { error: insertError } = await this.supabase.from("users").insert([
+          {
+            id: userId,
+            name: fullName,
+            email,
+            // department_id: null, // Optionally set if available
+            // image_url: '', // Optionally set if available
+          },
+        ]);
+        if (insertError) {
+          return {
+            user: data.user,
+            error: insertError,
+          };
+        }
+      }
 
       return {
         user: data.user,

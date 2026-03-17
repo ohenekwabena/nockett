@@ -255,6 +255,28 @@ export default function CreateTicketModal({
             user_id: user?.id,
           });
         }
+
+        // Send ticket-created email notification
+        if (!result.error && result.data) {
+          try {
+            await fetch("/api/email/ticket", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: user?.email, // Change to assignee or other recipient as needed
+                subject: `Ticket Created: ${result.data.title}`,
+                type: "ticket-created",
+                props: {
+                  ...result.data,
+                  creatorName: "User",
+                },
+              }),
+            });
+          } catch (e) {
+            // Optionally handle email error
+            console.error("Failed to send ticket created email", e);
+          }
+        }
       } else {
         result = await ticketService.updateTicket(ticket?.id || "", ticketData);
       }

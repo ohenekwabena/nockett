@@ -63,6 +63,7 @@ interface TicketModalProps {
     creator?: {
       id: string | undefined;
       name: string | undefined;
+      email?: string | undefined;
       avatarUrl?: string;
     };
     slaDueAt?: Date;
@@ -516,14 +517,49 @@ export default function TicketModal({
           break;
       }
 
+      let sendEmail = false;
+      let emailType = "ticket-updated";
+      switch (field) {
+        case "status":
+          updateData.status = value;
+          setStatus(value);
+          optimisticUpdates = { status: value };
+          sendEmail = true;
+          if (value === "CLOSED") {
+            emailType = "ticket-closed";
+          }
+          break;
+      }
+
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
         // Fallback to regular update
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
+        const { error, data } = await ticketService.updateTicket(ticket.id, updateData);
         if (error) {
           toast.error("Failed to update field");
           console.error("Error updating ticket:", error);
+        } else if (sendEmail) {
+          // Send ticket-updated or ticket-closed email notification
+          try {
+            await fetch("/api/email/ticket", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: ticket.creator?.email, // Change to assignee or other recipient as needed
+                subject:
+                  emailType === "ticket-closed" ? `Ticket Closed: ${ticket.title}` : `Ticket Updated: ${ticket.title}`,
+                type: emailType,
+                props: {
+                  ...ticket,
+                  status: value,
+                },
+              }),
+            });
+          } catch (e) {
+            // Optionally handle email error
+            console.error("Failed to send ticket update/closed email", e);
+          }
         }
       }
     } catch (err) {
@@ -1181,7 +1217,7 @@ export default function TicketModal({
                           onValueChange={(value) => handleQuickUpdate("assignee", value)}
                           disabled={loading}
                         >
-                          <SelectTrigger className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 dark:border-0 active:ring-0 focus:ring-0">
+                          <SelectTrigger className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 focus:ring-0 text-sm">
                             <SelectValue placeholder="Select assignee" />
                           </SelectTrigger>
                           <SelectContent className="dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200">
