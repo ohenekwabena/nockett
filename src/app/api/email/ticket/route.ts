@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (result.error) {
-      return NextResponse.json({ error: result.error.message || "Failed to send email" }, { status: 500 });
+      return NextResponse.json({ error: result.error || "Failed to send email" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, messageId: result.messageId });
