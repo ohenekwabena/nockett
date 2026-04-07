@@ -88,25 +88,6 @@ export function InviteUserCard() {
         </button>
       </form>
       {error && <div className="mt-2 text-red-600 text-sm">{error}</div>}
-      {inviteLink && (
-        <div className="mt-4">
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              value={inviteLink}
-              readOnly
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 p-2 text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800 text-xs"
-            />
-            <button
-              onClick={handleCopy}
-              className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-1 text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-              type="button"
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

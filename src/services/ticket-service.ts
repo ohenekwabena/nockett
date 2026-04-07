@@ -572,6 +572,36 @@ export class TicketService {
     return { data, error };
   }
 
+  async uploadAttachment(ticketId: string, file: File, uploadedBy?: string) {
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = `tickets/${ticketId}/${Date.now()}_${sanitizedName}`;
+
+    const { error: storageError } = await this.supabase.storage
+      .from("attachments")
+      .upload(filePath, file, { upsert: false });
+
+    if (storageError) return { data: null, error: storageError };
+
+    const { data: record, error: dbError } = await this.supabase
+      .from("ticket_attachments")
+      .insert({ ticket_id: ticketId, url: filePath, filename: file.name, uploaded_by: uploadedBy })
+      .select()
+      .single();
+
+    return { data: record, error: dbError };
+  }
+
+  async deleteAttachmentWithFile(id: number, filePath: string) {
+    await this.supabase.storage.from("attachments").remove([filePath]);
+    const { data, error } = await this.supabase.from("ticket_attachments").delete().eq("id", id);
+    return { data, error };
+  }
+
+  getAttachmentPublicUrl(filePath: string) {
+    const { data } = this.supabase.storage.from("attachments").getPublicUrl(filePath);
+    return data.publicUrl;
+  }
+
   // TICKET HISTORY CRUD
   async createTicketHistory(history: Omit<TicketHistory, "id" | "timestamp">) {
     const { data, error } = await this.supabase.from("ticket_history").insert(history).select().single();

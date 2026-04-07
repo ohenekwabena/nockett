@@ -7,6 +7,8 @@ export default function SettingsPage() {
 
   const userRole = role || (user?.user_metadata?.role as string) || null;
 
+  console.log("User role in settings page:", userRole);
+
   return (
     <div className="flex">
       <div className="pr-6 mt-10">

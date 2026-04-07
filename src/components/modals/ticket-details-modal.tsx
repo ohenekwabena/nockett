@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { capitalizeString, formatDate } from "@/utils/functions";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -22,6 +22,7 @@ import {
   type Assignee,
   type TicketComment,
   type TicketNote,
+  type TicketAttachment,
   type Demarcation,
   type Link,
   type Site,
@@ -114,9 +115,13 @@ export default function TicketModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [notes, setNotes] = useState<TicketNote[]>([]);
+  const [attachments, setAttachments] = useState<TicketAttachment[]>([]);
+  const [attachmentLoading, setAttachmentLoading] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<TicketAttachment | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [newComment, setNewComment] = useState("");
   const [newNote, setNewNote] = useState("");
-  const [activeTab, setActiveTab] = useState<"details" | "comments" | "notes">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "comments" | "notes" | "attachments">("details");
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -228,6 +233,7 @@ export default function TicketModal({
     if (isOpen) {
       loadDropdownData();
       loadCommentsAndNotes();
+      loadAttachments();
       refreshTicketData();
       // Reset other state
       setIsEditingTitle(false);
@@ -294,6 +300,16 @@ export default function TicketModal({
       if (notesRes.data) setNotes(notesRes.data);
     } catch (err) {
       console.error("Error loading comments and notes:", err);
+    }
+  };
+
+  const loadAttachments = async () => {
+    if (!ticket.id) return;
+    try {
+      const { data } = await ticketService.getTicketAttachments(ticket.id);
+      if (data) setAttachments(data as TicketAttachment[]);
+    } catch (err) {
+      console.error("Error loading attachments:", err);
     }
   };
 
@@ -940,7 +956,7 @@ export default function TicketModal({
         <div className="flex-1 overflow-hidden flex flex-col px-4 sm:px-6">
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as "details" | "comments" | "notes")}
+            onValueChange={(value) => setActiveTab(value as "details" | "comments" | "notes" | "attachments")}
             className="flex flex-col h-full"
           >
             <div className="overflow-x-auto flex-shrink-0">
@@ -962,6 +978,12 @@ export default function TicketModal({
                   className="px-4 py-2 rounded-2xl bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md hover:bg-gray-300 dark:hover:bg-gray-900 transition-all duration-150 ease-in-out mr-2 whitespace-nowrap cursor-pointer"
                 >
                   Notes ({notes.length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="attachments"
+                  className="px-4 py-2 rounded-2xl bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md hover:bg-gray-300 dark:hover:bg-gray-900 transition-all duration-150 ease-in-out mr-2 whitespace-nowrap cursor-pointer"
+                >
+                  Attachments ({attachments.length})
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1789,6 +1811,153 @@ export default function TicketModal({
                       })
                     )}
                   </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="attachments" className="mt-4 space-y-4 focus-visible:outline-none">
+                <div className="flex flex-col p-2 md:p-6 gap-4 md:border md:border-gray-200 md:dark:border-gray-700 md:rounded-lg md:bg-gray-50 md:dark:bg-gray-900">
+                  <h3 className="text-sm text-gray-400 dark:text-gray-500 font-semibold">Upload Attachment</h3>
+                  <div
+                    className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                    onClick={() => attachmentInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      if (!ticket.id) return;
+                      const files = Array.from(e.dataTransfer.files);
+                      setAttachmentLoading(true);
+                      await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
+                      await loadAttachments();
+                      setAttachmentLoading(false);
+                    }}
+                  >
+                    <input
+                      ref={attachmentInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                      className="hidden"
+                      onChange={async (e) => {
+                        if (!ticket.id || !e.target.files) return;
+                        const files = Array.from(e.target.files);
+                        e.target.value = "";
+                        setAttachmentLoading(true);
+                        await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
+                        await loadAttachments();
+                        setAttachmentLoading(false);
+                      }}
+                    />
+                    {attachmentLoading ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Uploading...</p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click or drag files here to attach</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          Images, PDF, Word, Excel, CSV, TXT
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm text-gray-400 dark:text-gray-500 font-semibold">Attachments</h3>
+                  {attachments.length === 0 ? (
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">No attachments yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {attachments.map((att) => {
+                        const publicUrl = ticketService.getAttachmentPublicUrl(att.url);
+                        const isImage = /\.(png|jpe?g|gif|webp|svg)$/i.test(att.filename);
+                        return (
+                          <div
+                            key={att.id}
+                            className="relative group rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-50 dark:bg-gray-900"
+                          >
+                            {isImage ? (
+                              <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={publicUrl} alt={att.filename} className="w-full h-28 object-cover" />
+                              </a>
+                            ) : (
+                              <a
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex flex-col items-center justify-center h-28 gap-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-10 w-10"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={1.5}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v13a2 2 0 01-2 2z"
+                                  />
+                                </svg>
+                                <span className="text-xs text-center px-1 truncate w-full">{att.filename}</span>
+                              </a>
+                            )}
+                            {isImage && (
+                              <p className="text-xs text-center px-1 py-1 truncate text-gray-600 dark:text-gray-400">
+                                {att.filename}
+                              </p>
+                            )}
+                            {(isAdmin || att.uploaded_by === user?.id) && (
+                              <AlertDialog
+                                open={attachmentToDelete?.id === att.id}
+                                onOpenChange={(open) => !open && setAttachmentToDelete(null)}
+                              >
+                                <AlertDialogTrigger asChild>
+                                  <button
+                                    onClick={() => setAttachmentToDelete(att)}
+                                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Delete attachment"
+                                  >
+                                    ✕
+                                  </button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-gray-900 dark:text-gray-100">
+                                      Delete Attachment
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                                      Are you sure you want to delete &quot;{att.filename}&quot;? This action cannot be
+                                      undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel className="bg-gray-100 dark:bg-gray-700 text-gray-900 hover:text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600">
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={async () => {
+                                        setAttachmentLoading(true);
+                                        await ticketService.deleteAttachmentWithFile(att.id, att.url);
+                                        setAttachmentToDelete(null);
+                                        await loadAttachments();
+                                        setAttachmentLoading(false);
+                                      }}
+                                      disabled={attachmentLoading}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                      {attachmentLoading ? "Deleting..." : "Delete"}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </div>

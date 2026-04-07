@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { capitalizeString } from "@/utils/functions";
 import {
   ticketService,
@@ -66,6 +66,8 @@ export default function CreateTicketModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialNote, setInitialNote] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New ticket fields
   const [incidentDate, setIncidentDate] = useState("");
@@ -151,6 +153,7 @@ export default function CreateTicketModal({
       setServiceType("");
       setDetectionSource("");
       setTrafficImpact("");
+      setPendingFiles([]);
       setError(null);
     }
   }, [isOpen, mode, ticket]);
@@ -243,7 +246,7 @@ export default function CreateTicketModal({
         trafficImpact: trafficImpact || undefined,
       };
 
-      let result;
+      let result: Awaited<ReturnType<typeof ticketService.createTicket>>;
       if (mode === "create") {
         result = await ticketService.createTicket(ticketData);
 
@@ -254,6 +257,13 @@ export default function CreateTicketModal({
             content: initialNote.trim(),
             user_id: user?.id,
           });
+        }
+
+        // Upload pending attachments
+        if (!result.error && result.data && pendingFiles.length > 0) {
+          await Promise.all(
+            pendingFiles.map((file) => ticketService.uploadAttachment(result.data!.id, file, user?.id)),
+          );
         }
 
         // Send ticket-created email notification
@@ -383,6 +393,59 @@ export default function CreateTicketModal({
                   </p>
                 )}
               </div>
+
+              {mode === "create" && (
+                <div>
+                  <label className="text-sm font-semibold dark:text-gray-400 text-gray-600 block mb-1">
+                    Attachments (Optional)
+                  </label>
+                  <div
+                    className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const dropped = Array.from(e.dataTransfer.files);
+                      setPendingFiles((prev) => [...prev, ...dropped]);
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setPendingFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Click or drag files here to attach</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Images, PDF, Word, Excel, CSV, TXT</p>
+                  </div>
+                  {pendingFiles.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {pendingFiles.map((file, i) => (
+                        <li
+                          key={i}
+                          className="flex items-center justify-between text-sm bg-gray-100 dark:bg-gray-700 rounded px-2 py-1"
+                        >
+                          <span className="truncate max-w-[200px] text-gray-800 dark:text-gray-200">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="text-red-500 hover:text-red-700 ml-2 text-xs"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
