@@ -34,18 +34,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       // INITIAL_SESSION fires once on mount; TOKEN_REFRESHED does not require a role re-fetch
       if (event === "TOKEN_REFRESHED") {
         setUser(session?.user ?? null);
+        if (!session) {
+          setTimeout(async () => {
+            await supabase.auth.signOut({ scope: "global" });
+          }, 0);
+        }
         return;
       }
 
       const sessionUser = session?.user ?? null;
       setUser(sessionUser);
 
-      if (sessionUser) {
-        await fetchUserRole(sessionUser.id);
+      if (event === "SIGNED_IN" && sessionUser) {
+        setTimeout(async () => {
+          await fetchUserRole(sessionUser.id);
+        }, 0);
+      } else if (sessionUser) {
+        fetchUserRole(sessionUser.id);
       } else {
         setRole(null);
       }
