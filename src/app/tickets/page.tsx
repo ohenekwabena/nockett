@@ -328,7 +328,7 @@ export default function TicketsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="mb-6 flex flex-col lg:flex-row justify-center lg:justify-between items-center w-full gap-4">
+        <div className="mb-6 flex flex-col lg:flex-row justify-center lg:justify-between items-start lg:items-center w-full gap-4">
           <div className="overflow-x-auto scrollbar-hide">
             <TabsList className="inline-flex min-w-max h-auto">
               <TabsTrigger
@@ -354,16 +354,16 @@ export default function TicketsPage() {
               </TabsTrigger>
             </TabsList>
           </div>
-          <div className="flex justify-center items-center flex-col sm:flex-row gap-3 w-fit">
-            <div className="relative">
+          <div className="flex justify-center items-center flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <div className="relative w-full sm:w-auto">
               <SearchBar
                 onSearch={handleSearch}
                 placeholder="Search by ticket ID, title, description, assignee, creator, status..."
-                className="max-w-2xl w-fit sm:w-[480px]"
+                className="w-full sm:w-[480px]"
                 isLoading={false}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
               <Button
                 onClick={handleDownloadImportTemplate}
                 disabled={isDownloadingTemplate || isImporting || isExporting}

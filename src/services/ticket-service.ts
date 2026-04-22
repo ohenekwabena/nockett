@@ -1,8 +1,14 @@
 import { createClient } from "@/api/supabase/client";
-import { sendEmail } from "../lib/email-service";
-import { TicketCreatedEmailProps } from "../emails/TicketCreatedEmail";
-import { TicketUpdatedEmailProps } from "../emails/TicketUpdatedEmail";
-import { TicketClosedEmailProps } from "../emails/TicketClosedEmail";
+
+// Send email via server-side API route to avoid exposing RESEND_API_KEY on the client
+async function sendEmailViaApi(to: string, subject: string, type: string, props: Record<string, unknown>) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
+  await fetch(`${baseUrl}/api/email/ticket`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to, subject, type, props }),
+  });
+}
 
 // Type definitions
 export interface Ticket {
@@ -246,16 +252,11 @@ export class TicketService {
           const userResult = await this.getUserById(ticket.creator_id);
           creatorName = userResult.data?.name;
         }
-        const template: TicketCreatedEmailProps = {
+        await sendEmailViaApi(creatorEmail, `Ticket Created: ${ticket.title}`, "ticket-created", {
           title: ticket.title,
           description: ticket.description,
           status: ticket.status,
           creatorName: creatorName,
-        };
-        await sendEmail({
-          to: creatorEmail,
-          subject: `Ticket Created: ${ticket.title}`,
-          template: { type: "ticket-created", props: template },
         });
       } catch (e) {
         console.error("Failed to send ticket creation email", e);
@@ -399,27 +400,16 @@ export class TicketService {
             updaterName = await this.getAssigneeName(updatedTicket.assignee_id);
           }
           if (updatedTicket.status === "CLOSED") {
-            const closedTemplate: TicketClosedEmailProps = {
+            await sendEmailViaApi(creatorEmail, `Ticket Closed: ${updatedTicket.title}`, "ticket-closed", {
               title: updatedTicket.title,
               closerName: updaterName,
-            };
-            await sendEmail({
-              to: creatorEmail,
-              subject: `Ticket Closed: ${updatedTicket.title}`,
-              template: { type: "ticket-closed", props: closedTemplate },
             });
           } else {
-            const oldStatus = updates.status ?? "";
-            const updatedTemplate: TicketUpdatedEmailProps = {
+            await sendEmailViaApi(creatorEmail, `Ticket Status Updated: ${updatedTicket.title}`, "ticket-updated", {
               title: updatedTicket.title,
-              oldStatus: oldStatus,
+              oldStatus: updates.status ?? "",
               newStatus: updatedTicket.status,
               updaterName: updaterName,
-            };
-            await sendEmail({
-              to: creatorEmail,
-              subject: `Ticket Status Updated: ${updatedTicket.title}`,
-              template: { type: "ticket-updated", props: updatedTemplate },
             });
           }
         }
