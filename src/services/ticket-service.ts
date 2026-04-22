@@ -7,6 +7,7 @@ import { TicketClosedEmailProps } from "../emails/TicketClosedEmail";
 // Type definitions
 export interface Ticket {
   id: string;
+  ticket_id?: string;
   title: string;
   description?: string;
   category_id?: number;
@@ -185,6 +186,7 @@ export class TicketService {
   private transformTicket(dbTicket: any): Ticket {
     return {
       id: dbTicket.id,
+      ticket_id: dbTicket.ticket_id,
       title: dbTicket.title,
       description: dbTicket.description,
       category_id: dbTicket.category_id,
@@ -228,7 +230,11 @@ export class TicketService {
 
   // TICKETS CRUD
   async createTicket(ticket: Omit<Ticket, "id" | "created_at" | "updated_at">) {
-    const snakeCaseTicket = this.toSnakeCase(ticket as Partial<Ticket>);
+    const ticketWithGeneratedId = {
+      ...ticket,
+      ticket_id: ticket.ticket_id ?? (await this.generateNextTicketId()),
+    };
+    const snakeCaseTicket = this.toSnakeCase(ticketWithGeneratedId as Partial<Ticket>);
     const { data, error } = await this.supabase.from("tickets").insert(snakeCaseTicket).select().single();
     // Transform response back to camelCase
     if (data) {
@@ -256,6 +262,27 @@ export class TicketService {
       }
       return { data: this.transformTicket(data), error };
     }
+    return { data, error };
+  }
+
+  async createTicketsBulk(tickets: Array<Omit<Ticket, "id" | "created_at" | "updated_at">>) {
+    if (!tickets.length) {
+      return { data: [], error: null };
+    }
+
+    const generatedIds = await this.generateNextTicketIds(tickets.length);
+    const snakeCaseTickets = tickets.map((ticket, index) =>
+      this.toSnakeCase({
+        ...ticket,
+        ticket_id: ticket.ticket_id ?? generatedIds[index],
+      } as Partial<Ticket>),
+    );
+    const { data, error } = await this.supabase.from("tickets").insert(snakeCaseTickets).select();
+
+    if (data && Array.isArray(data)) {
+      return { data: data.map((ticket) => this.transformTicket(ticket)), error };
+    }
+
     return { data, error };
   }
 
@@ -315,6 +342,39 @@ export class TicketService {
       converted[snakeKey] = value;
     }
     return converted;
+  }
+
+  private async generateNextTicketId(): Promise<string> {
+    const [ticketId] = await this.generateNextTicketIds(1);
+    return ticketId;
+  }
+
+  private async generateNextTicketIds(count: number): Promise<string[]> {
+    const now = new Date();
+    const year = now.getFullYear().toString();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const datePrefix = `${year}${month}${day}`;
+    const ticketPrefix = `Ticket#${datePrefix}`;
+
+    const { data, error } = await this.supabase
+      .from("tickets")
+      .select("ticket_id")
+      .like("ticket_id", `${ticketPrefix}%`)
+      .order("ticket_id", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    const latestTicketId = data?.[0]?.ticket_id;
+    const latestSequence = latestTicketId ? Number.parseInt(String(latestTicketId).slice(-3), 10) || 0 : 0;
+
+    return Array.from({ length: count }, (_, index) => {
+      const sequence = String(latestSequence + index + 1).padStart(3, "0");
+      return `${ticketPrefix}${sequence}`;
+    });
   }
 
   async updateTicket(id: string, updates: Partial<Ticket>) {
@@ -397,11 +457,13 @@ export class TicketService {
     // Fetch assignees and categories for mapping
     const { data: assignees } = await this.getAssignees();
     const { data: categories } = await this.getTicketCategories();
+    const { data: priorities } = await this.getTicketPriorities();
     const { data: users } = await this.getUsers();
 
     // Create maps for quick lookup
     const assigneeMap = new Map((assignees || []).map((a) => [a.id, a.name]));
     const categoryMap = new Map((categories || []).map((c) => [c.id, c.name]));
+    const priorityMap = new Map((priorities || []).map((p) => [p.id, p.name]));
     const userMap = new Map((users || []).map((u) => [u.id, u.name]));
 
     // Get all notes for all tickets
@@ -418,6 +480,7 @@ export class TicketService {
       ticket,
       assigneeName: ticket.assignee_id ? assigneeMap.get(ticket.assignee_id) : undefined,
       categoryName: ticket.category_id ? categoryMap.get(ticket.category_id) : undefined,
+      priorityName: ticket.priority_id ? priorityMap.get(ticket.priority_id) : undefined,
       creatorName: ticket.creator_id ? userMap.get(ticket.creator_id) : undefined,
       notes: ticketNotes.get(ticket.id) || "",
     }));
@@ -814,6 +877,7 @@ export class TicketService {
       .select(
         `
         id,
+        ticket_id,
         title,
         description,
         status,
@@ -843,6 +907,7 @@ export class TicketService {
   async getTicketsWithDetails(filters?: { status?: string; creator_id?: string; assignee_id?: number }) {
     let query = this.supabase.from("tickets").select(`
         id,
+        ticket_id,
         title,
         description,
         status,
@@ -876,6 +941,7 @@ export class TicketService {
       .select(
         `
         id,
+        ticket_id,
         title,
         description,
         status,
@@ -960,6 +1026,7 @@ export class TicketService {
   }) {
     let query = this.supabase.from("tickets").select(`
       id,
+      ticket_id,
       title,
       description,
       status,
@@ -987,6 +1054,7 @@ export class TicketService {
         title.ilike.%${term}%,
         description.ilike.%${term}%,
         id.ilike.%${term}%,
+        ticket_id.ilike.%${term}%,
         ticket_number.ilike.%${term}%,
         site.ilike.%${term}%,
         system.ilike.%${term}%,

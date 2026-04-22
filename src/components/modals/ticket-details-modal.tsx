@@ -49,6 +49,7 @@ import PersonEntityAvatar from "../person-entity-avatar";
 interface TicketModalProps {
   ticket: {
     id?: string;
+    ticket_id?: string;
     title: string;
     description: string;
     category?: string;
@@ -864,7 +865,8 @@ export default function TicketModal({
               ) : (
                 <div className="flex items-center gap-2 group">
                   <DialogTitle className="text-2xl sm:text-3xl dark:text-gray-200 text-gray-950">
-                    #{currentTicket.id?.slice(-8) || "N/A"} - {editedTitle || currentTicket.title}
+                    {currentTicket.ticket_id || `#${currentTicket.id?.slice(-8) || "N/A"}`} -{" "}
+                    {editedTitle || currentTicket.title}
                   </DialogTitle>
                   <Button
                     onClick={() => setIsEditingTitle(true)}
