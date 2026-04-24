@@ -73,7 +73,9 @@ export default function SignupPage() {
         await fetch(`/api/auth/invite/validate?token=${inviteToken}`, {
           method: "PATCH",
         });
-        router.push("/dashboard");
+        // Sign out the auto-created session so the user must log in manually
+        await authService.signOut();
+        router.push("/auth/login?registered=true");
       }
     } catch (_) {
       setError("An unexpected error occurred");

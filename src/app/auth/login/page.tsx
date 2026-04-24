@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/services/auth-service";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered") === "true";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +94,15 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Success Message */}
+        {registered && (
+          <div className="px-6 mb-4 max-w-[480px] mx-auto w-full">
+            <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 text-green-800 dark:text-green-300 rounded-xl text-sm">
+              Account created successfully! Please log in with your new credentials.
+            </div>
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
           <div className="px-6 mb-4 max-w-[480px] mx-auto w-full">
@@ -127,7 +138,7 @@ export default function LoginPage() {
             <div className="flex justify-between items-center">
               <label className="text-gray-900 dark:text-gray-100 text-sm font-semibold">Password</label>
               <a
-                href="#"
+                href="/auth/forgot-password"
                 className="text-gray-600 dark:text-gray-100 text-xs font-semibold  hover:text-gray-300 dark:hover:text-gray-300 transition-colors"
               >
                 Forgot Password?
@@ -178,5 +189,13 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
