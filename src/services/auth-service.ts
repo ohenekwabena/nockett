@@ -23,6 +23,19 @@ export interface SignInData {
 export class AuthService {
   private supabase = createClient();
 
+  private getAppBaseUrl(): string {
+    const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+    if (configuredBaseUrl) {
+      return configuredBaseUrl.replace(/\/$/, "");
+    }
+
+    if (typeof window !== "undefined") {
+      return window.location.origin;
+    }
+
+    return "http://localhost:3000";
+  }
+
   /**
    * Sign up a new user with email and password
    */
@@ -143,7 +156,7 @@ export class AuthService {
   async resetPassword(email: string): Promise<{ error?: AuthError | null }> {
     try {
       const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${this.getAppBaseUrl()}/auth/reset-password`,
       });
       return { error };
     } catch (error) {
@@ -202,7 +215,7 @@ export class AuthService {
       const { error } = await this.supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${this.getAppBaseUrl()}/auth/callback`,
         },
       });
       return { error };
