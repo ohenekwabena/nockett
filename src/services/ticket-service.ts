@@ -263,28 +263,30 @@ export class TicketService {
   }
 
   // TICKETS CRUD
-  async createTicket(ticket: Omit<Ticket, "id" | "created_at" | "updated_at">) {
+  // Write seam (ADR-0002): returns the created domain Ticket and throws on a
+  // data-access error, rather than handing back Supabase's { data, error }.
+  async createTicket(ticket: Omit<Ticket, "id" | "created_at" | "updated_at">): Promise<Ticket> {
     const ticketWithGeneratedId = {
       ...ticket,
       ticket_id: ticket.ticket_id ?? (await this.generateNextTicketId()),
     };
     const snakeCaseTicket = this.toSnakeCase(ticketWithGeneratedId as Partial<Ticket>);
-    const { data, error } = await this.supabase.from("tickets").insert(snakeCaseTicket).select().single();
-    // Transform response back to camelCase
-    if (data) {
-      // Notify the creator; failures are logged, not swallowed, and never block creation.
-      const notification = await notifyTicketCreated(ticket);
-      if (!notification.ok) {
-        console.error("Failed to send ticket creation email:", notification.error);
-      }
-      return { data: this.transformTicket(data), error };
+    const created = this.transformTicket(
+      this.unwrap(await this.supabase.from("tickets").insert(snakeCaseTicket).select().single(), "createTicket"),
+    );
+
+    // Notify the creator; failures are logged, not swallowed, and never block creation.
+    const notification = await notifyTicketCreated(ticket);
+    if (!notification.ok) {
+      console.error("Failed to send ticket creation email:", notification.error);
     }
-    return { data, error };
+
+    return created;
   }
 
-  async createTicketsBulk(tickets: Array<Omit<Ticket, "id" | "created_at" | "updated_at">>) {
+  async createTicketsBulk(tickets: Array<Omit<Ticket, "id" | "created_at" | "updated_at">>): Promise<Ticket[]> {
     if (!tickets.length) {
-      return { data: [], error: null };
+      return [];
     }
 
     const generatedIds = await this.generateNextTicketIds(tickets.length);
@@ -294,37 +296,30 @@ export class TicketService {
         ticket_id: ticket.ticket_id ?? generatedIds[index],
       } as Partial<Ticket>),
     );
-    const { data, error } = await this.supabase.from("tickets").insert(snakeCaseTickets).select();
-
-    if (data && Array.isArray(data)) {
-      return { data: data.map((ticket) => this.transformTicket(ticket)), error };
-    }
-
-    return { data, error };
+    const inserted = this.unwrapList(
+      await this.supabase.from("tickets").insert(snakeCaseTickets).select(),
+      "createTicketsBulk",
+    );
+    return inserted.map((ticket) => this.transformTicket(ticket));
   }
 
-  async getTickets(filters?: { status?: string; creator_id?: string; assignee_id?: number }) {
+  async getTickets(filters?: { status?: string; creator_id?: string; assignee_id?: number }): Promise<Ticket[]> {
     let query = this.supabase.from("tickets").select("*");
 
     if (filters?.status) query = query.eq("status", filters.status);
     if (filters?.creator_id) query = query.eq("creator_id", filters.creator_id);
     if (filters?.assignee_id) query = query.eq("assignee_id", filters.assignee_id);
 
-    const { data, error } = await query.order("created_at", { ascending: false });
     // Transform all tickets from snake_case to camelCase
-    if (data && Array.isArray(data)) {
-      return { data: data.map((ticket) => this.transformTicket(ticket)), error };
-    }
-    return { data, error };
+    const data = this.unwrapList(await query.order("created_at", { ascending: false }), "getTickets");
+    return data.map((ticket) => this.transformTicket(ticket));
   }
 
-  async getTicketById(id: string) {
-    const { data, error } = await this.supabase.from("tickets").select("*").eq("id", id).single();
+  async getTicketById(id: string): Promise<Ticket> {
     // Transform single ticket from snake_case to camelCase
-    if (data) {
-      return { data: this.transformTicket(data), error };
-    }
-    return { data, error };
+    return this.transformTicket(
+      this.unwrap(await this.supabase.from("tickets").select("*").eq("id", id).single(), "getTicketById"),
+    );
   }
 
   // Transform camelCase properties to snake_case for database
@@ -394,40 +389,43 @@ export class TicketService {
     });
   }
 
-  async updateTicket(id: string, updates: Partial<Ticket>) {
+  async updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket> {
     const snakeCaseUpdates = this.toSnakeCase(updates);
-    const { data, error } = await this.supabase
-      .from("tickets")
-      .update({ ...snakeCaseUpdates, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select()
-      .single();
     // Transform response back to camelCase
-    if (data) {
-      // Notify the creator on status change; failures are logged, not swallowed.
-      const updatedTicket = this.transformTicket(data);
-      if (typeof updates.status !== "undefined") {
-        const notification = await notifyTicketStatusChanged(updatedTicket);
-        if (!notification.ok) {
-          console.error("Failed to send ticket update email:", notification.error);
-        }
+    const updatedTicket = this.transformTicket(
+      this.unwrap(
+        await this.supabase
+          .from("tickets")
+          .update({ ...snakeCaseUpdates, updated_at: new Date().toISOString() })
+          .eq("id", id)
+          .select()
+          .single(),
+        "updateTicket",
+      ),
+    );
+
+    // Notify the creator on status change; failures are logged, not swallowed.
+    if (typeof updates.status !== "undefined") {
+      const notification = await notifyTicketStatusChanged(updatedTicket);
+      if (!notification.ok) {
+        console.error("Failed to send ticket update email:", notification.error);
       }
-      return { data: this.transformTicket(data), error };
     }
-    return { data, error };
+
+    return updatedTicket;
   }
 
-  async deleteTicket(id: string) {
-    const { data, error } = await this.supabase.from("tickets").delete().eq("id", id);
-    return { data, error };
+  async deleteTicket(id: string): Promise<void> {
+    this.unwrap(await this.supabase.from("tickets").delete().eq("id", id), "deleteTicket");
   }
 
   // EXPORT METHOD FOR EXCEL
+  // Read seam (ADR-0002): returns the enriched export rows and throws on a
+  // data-access error. The sub-resource readers it still leans on (getUsers,
+  // getTicketNotes) remain on the { data, error } envelope until their own
+  // migration, so they are destructured locally below.
   async getTicketsForExport() {
-    const { data: tickets, error: ticketsError } = await this.getTickets();
-    if (ticketsError || !tickets) {
-      return { data: null, error: ticketsError };
-    }
+    const tickets = await this.getTickets();
 
     // Fetch assignees and categories for mapping. The reference-data readers now
     // throw (ADR-0002); catch each locally so one failed lookup degrades just
@@ -462,7 +460,7 @@ export class TicketService {
       notes: ticketNotes.get(ticket.id) || "",
     }));
 
-    return { data: enrichedData, error: null };
+    return enrichedData;
   }
 
   // TICKET CATEGORIES CRUD

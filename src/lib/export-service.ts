@@ -472,14 +472,12 @@ export class ExportService {
     }
 
     if (ticketsToCreate.length > 0) {
-      const { data, error } = await ticketService.createTicketsBulk(ticketsToCreate);
-      if (error) {
-        throw new Error(error.message || "Failed to import tickets");
-      }
+      // The write seam returns the created tickets and throws on failure (ADR-0002).
+      const created = await ticketService.createTicketsBulk(ticketsToCreate);
 
       return {
         totalRows,
-        createdCount: data?.length || 0,
+        createdCount: created.length,
         failedRows,
         strictMode,
         aborted: false,

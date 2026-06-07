@@ -139,13 +139,9 @@ export default function TicketsPage() {
     try {
       setIsExporting(true);
       toast.loading("Preparing export...");
-      const { data: enrichedData, error } = await ticketService.getTicketsForExport();
-
-      if (error || !enrichedData) {
-        toast.error("Failed to fetch tickets for export");
-        setIsExporting(false);
-        return;
-      }
+      // The read seam returns the rows and throws on failure (ADR-0002); the
+      // catch below surfaces any error.
+      const enrichedData = await ticketService.getTicketsForExport();
 
       // Transform enriched data to match export format
       const exportData = enrichedData.map((item: any) => ({

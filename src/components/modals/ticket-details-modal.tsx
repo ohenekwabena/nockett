@@ -177,8 +177,9 @@ export default function TicketModal({
   const refreshTicketData = async () => {
     if (!ticket.id) return;
     try {
-      const { data, error } = await ticketService.getTicketById(ticket.id);
-      if (data && !error) {
+      // The read seam returns the ticket and throws on failure (ADR-0002).
+      const data = await ticketService.getTicketById(ticket.id);
+      if (data) {
         const matchedPriority = priorities.find((p) => p.id === data.priority_id);
         const matchedCategory = categories.find((c) => c.id === data.category_id);
         const resolvedPriority = matchedPriority?.name?.toUpperCase() as
@@ -186,7 +187,7 @@ export default function TicketModal({
           | undefined;
 
         // Update local state with fresh data from database
-        setStatus(data.status || "OPEN");
+        setStatus((data.status as TicketModalProps["ticket"]["status"]) || "OPEN");
         setPriority(resolvedPriority || ticket.priority || priority);
         setCategory(
           matchedCategory?.name?.toUpperCase() ||
@@ -563,13 +564,10 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        // Fallback to regular update. updateTicket owns the status-change
-        // notification, so nothing is emailed from here.
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update field");
-          console.error("Error updating ticket:", error);
-        }
+        // Fallback to regular update. The write seam throws on failure (ADR-0002)
+        // and updateTicket owns the status-change notification, so nothing is
+        // emailed from here; the catch below surfaces any error.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
     } catch (err) {
       toast.error("Failed to update field");
@@ -591,11 +589,9 @@ export default function TicketModal({
       if (deleteTicketWithOptimism) {
         await deleteTicketWithOptimism(ticket.id);
       } else {
-        // Fallback to regular delete
-        const { error } = await ticketService.deleteTicket(ticket.id);
-        if (!error) {
-          onTicketUpdated();
-        }
+        // Fallback to regular delete; the write seam throws on failure (ADR-0002).
+        await ticketService.deleteTicket(ticket.id);
+        onTicketUpdated();
       }
       onOpenChange?.(false);
     } catch (err) {
@@ -621,14 +617,9 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update title");
-          console.error("Error updating title:", error);
-          setEditedTitle(ticket.title); // Revert on error
-        } else {
-          toast.success("Title updated");
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
+        toast.success("Title updated");
       }
       setIsEditingTitle(false);
     } catch (err) {
@@ -655,14 +646,9 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update description");
-          console.error("Error updating description:", error);
-          setEditedDescription(ticket.description || ""); // Revert on error
-        } else {
-          toast.success("Description updated");
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
+        toast.success("Description updated");
       }
       setIsEditingDescription(false);
     } catch (err) {
@@ -699,12 +685,8 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update root cause level 1");
-          setEditedRootCauseLev1(ticket.rootCauseLev1 || "");
-          return;
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
       toast.success("Root Cause Level 1 updated");
       setIsEditingRootCauseLev1(false);
@@ -736,12 +718,8 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update root cause level 2");
-          setEditedRootCauseLev2(ticket.rootCauseLev2 || "");
-          return;
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
       toast.success("Root Cause Level 2 updated");
       setIsEditingRootCauseLev2(false);
@@ -773,12 +751,8 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update preventive action");
-          setEditedPreventiveAction(ticket.preventiveAction || "");
-          return;
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
       toast.success("Preventive Action updated");
       setIsEditingPreventiveAction(false);

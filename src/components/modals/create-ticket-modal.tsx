@@ -246,36 +246,30 @@ export default function CreateTicketModal({
         trafficImpact: trafficImpact || undefined,
       };
 
-      let result: Awaited<ReturnType<typeof ticketService.createTicket>>;
       if (mode === "create") {
-        result = await ticketService.createTicket(ticketData);
+        // The write seam returns the created ticket and throws on failure (ADR-0002).
+        const created = await ticketService.createTicket(ticketData);
 
-        // If ticket was created successfully and there's an initial note, add it
-        if (!result.error && result.data && initialNote.trim()) {
+        // If there's an initial note, add it
+        if (initialNote.trim()) {
           await ticketService.createTicketNote({
-            ticket_id: result.data.id,
+            ticket_id: created.id,
             content: initialNote.trim(),
             user_id: user?.id,
           });
         }
 
         // Upload pending attachments
-        if (!result.error && result.data && pendingFiles.length > 0) {
-          await Promise.all(
-            pendingFiles.map((file) => ticketService.uploadAttachment(result.data!.id, file, user?.id)),
-          );
+        if (pendingFiles.length > 0) {
+          await Promise.all(pendingFiles.map((file) => ticketService.uploadAttachment(created.id, file, user?.id)));
         }
       } else {
-        result = await ticketService.updateTicket(ticket?.id || "", ticketData);
+        await ticketService.updateTicket(ticket?.id || "", ticketData);
       }
 
-      if (result.error) {
-        setError(result.error.message);
-      } else {
-        onTicketCreated();
-      }
+      onTicketCreated();
     } catch (err) {
-      setError(`An unexpected error occurred: ${err}`);
+      setError(err instanceof Error ? err.message : `An unexpected error occurred: ${err}`);
     } finally {
       setLoading(false);
     }
