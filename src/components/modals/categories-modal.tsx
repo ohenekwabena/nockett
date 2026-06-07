@@ -59,13 +59,8 @@ export default function CategoriesModal({
     const loadCategories = async () => {
         try {
             setIsLoading(true);
-            const { data, error } = await ticketService.getTicketCategories();
-            if (error) {
-                toast.error("Failed to load categories");
-                console.error("Error loading categories:", error);
-            } else {
-                setCategories(data || []);
-            }
+            const data = await ticketService.getTicketCategories();
+            setCategories(data);
         } catch (error) {
             toast.error("Failed to load categories");
             console.error("Error loading categories:", error);

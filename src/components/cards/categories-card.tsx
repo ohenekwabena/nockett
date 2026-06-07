@@ -25,12 +25,8 @@ export default function CategoriesCard() {
     const loadCategories = async () => {
         try {
             setIsLoading(true);
-            const { data, error } = await ticketService.getTicketCategories();
-            if (error) {
-                console.error("Error loading categories:", error);
-            } else {
-                setCategories(data || []);
-            }
+            const data = await ticketService.getTicketCategories();
+            setCategories(data);
         } catch (error) {
             console.error("Error loading categories:", error);
         } finally {

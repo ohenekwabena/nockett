@@ -49,13 +49,8 @@ export default function TrafficImpactModal({ isOpen, onOpenChange, onTrafficImpa
   const loadTrafficImpacts = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getTrafficImpacts();
-      if (error) {
-        toast.error("Failed to load traffic impacts");
-        console.error("Error loading traffic impacts:", error);
-      } else {
-        setTrafficImpacts(data || []);
-      }
+      const data = await ticketService.getTrafficImpacts();
+      setTrafficImpacts(data);
     } catch (error) {
       toast.error("Failed to load traffic impacts");
       console.error("Error loading traffic impacts:", error);

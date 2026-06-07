@@ -59,13 +59,8 @@ export default function PrioritiesModal({
     const loadPriorities = async () => {
         try {
             setIsLoading(true);
-            const { data, error } = await ticketService.getTicketPriorities();
-            if (error) {
-                toast.error("Failed to load priorities");
-                console.error("Error loading priorities:", error);
-            } else {
-                setPriorities(data || []);
-            }
+            const data = await ticketService.getTicketPriorities();
+            setPriorities(data);
         } catch (error) {
             toast.error("Failed to load priorities");
             console.error("Error loading priorities:", error);

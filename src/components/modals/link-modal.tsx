@@ -49,13 +49,8 @@ export default function LinkModal({ isOpen, onOpenChange, onLinksChange }: LinkM
   const loadLinks = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getLinks();
-      if (error) {
-        toast.error("Failed to load links");
-        console.error("Error loading links:", error);
-      } else {
-        setLinks(data || []);
-      }
+      const data = await ticketService.getLinks();
+      setLinks(data);
     } catch (error) {
       toast.error("Failed to load links");
       console.error("Error loading links:", error);

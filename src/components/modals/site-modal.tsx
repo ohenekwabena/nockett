@@ -49,13 +49,8 @@ export default function SiteModal({ isOpen, onOpenChange, onSitesChange }: SiteM
   const loadSites = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getSites();
-      if (error) {
-        toast.error("Failed to load sites");
-        console.error("Error loading sites:", error);
-      } else {
-        setSites(data || []);
-      }
+      const data = await ticketService.getSites();
+      setSites(data);
     } catch (error) {
       toast.error("Failed to load sites");
       console.error("Error loading sites:", error);

@@ -25,12 +25,8 @@ export default function DemarcationCard() {
   const loadDemarcations = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getDemarcations();
-      if (error) {
-        console.error("Error loading demarcations:", error);
-      } else {
-        setDemarcations(data || []);
-      }
+      const data = await ticketService.getDemarcations();
+      setDemarcations(data);
     } catch (error) {
       console.error("Error loading demarcations:", error);
     } finally {

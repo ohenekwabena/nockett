@@ -49,13 +49,8 @@ export default function ServiceTypeModal({ isOpen, onOpenChange, onServiceTypesC
   const loadServiceTypes = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getServiceTypes();
-      if (error) {
-        toast.error("Failed to load service types");
-        console.error("Error loading service types:", error);
-      } else {
-        setServiceTypes(data || []);
-      }
+      const data = await ticketService.getServiceTypes();
+      setServiceTypes(data);
     } catch (error) {
       toast.error("Failed to load service types");
       console.error("Error loading service types:", error);

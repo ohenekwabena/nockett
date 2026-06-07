@@ -53,13 +53,8 @@ export default function DetectionSourceModal({
   const loadDetectionSources = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getDetectionSources();
-      if (error) {
-        toast.error("Failed to load detection sources");
-        console.error("Error loading detection sources:", error);
-      } else {
-        setDetectionSources(data || []);
-      }
+      const data = await ticketService.getDetectionSources();
+      setDetectionSources(data);
     } catch (error) {
       toast.error("Failed to load detection sources");
       console.error("Error loading detection sources:", error);

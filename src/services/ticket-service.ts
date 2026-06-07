@@ -206,6 +206,16 @@ export class TicketService {
     return result.data as T;
   }
 
+  /**
+   * Like {@link unwrap}, but for list reads: throws on error and coalesces a
+   * null `data` to an empty array, so callers always get an array or an
+   * exception (ADR-0002) — never null and never the Postgres envelope.
+   */
+  private unwrapList<T>(result: { data: T[] | null; error: { message: string } | null }, op: string): T[] {
+    if (result.error) throw new Error(`ticketService.${op} failed: ${result.error.message}`);
+    return result.data ?? [];
+  }
+
   // Transform snake_case database columns to camelCase
   private transformTicket(dbTicket: any): Ticket {
     return {
@@ -419,16 +429,18 @@ export class TicketService {
       return { data: null, error: ticketsError };
     }
 
-    // Fetch assignees and categories for mapping
-    const { data: assignees } = await this.getAssignees();
-    const { data: categories } = await this.getTicketCategories();
-    const { data: priorities } = await this.getTicketPriorities();
+    // Fetch assignees and categories for mapping. The reference-data readers now
+    // throw (ADR-0002); catch each locally so one failed lookup degrades just
+    // that column instead of aborting the whole export (partial export preserved).
+    const assignees = await this.getAssignees().catch(() => []);
+    const categories = await this.getTicketCategories().catch(() => []);
+    const priorities = await this.getTicketPriorities().catch(() => []);
     const { data: users } = await this.getUsers();
 
     // Create maps for quick lookup
-    const assigneeMap = new Map((assignees || []).map((a) => [a.id, a.name]));
-    const categoryMap = new Map((categories || []).map((c) => [c.id, c.name]));
-    const priorityMap = new Map((priorities || []).map((p) => [p.id, p.name]));
+    const assigneeMap = new Map(assignees.map((a) => [a.id, a.name]));
+    const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+    const priorityMap = new Map(priorities.map((p) => [p.id, p.name]));
     const userMap = new Map((users || []).map((u) => [u.id, u.name]));
 
     // Get all notes for all tickets
@@ -461,9 +473,11 @@ export class TicketService {
     );
   }
 
-  async getTicketCategories() {
-    const { data, error } = await this.supabase.from("ticket_categories").select("*").order("name");
-    return { data, error };
+  async getTicketCategories(): Promise<TicketCategory[]> {
+    return this.unwrapList(
+      await this.supabase.from("ticket_categories").select("*").order("name"),
+      "getTicketCategories",
+    );
   }
 
   async updateTicketCategory(id: number, updates: Partial<TicketCategory>): Promise<TicketCategory> {
@@ -485,9 +499,11 @@ export class TicketService {
     );
   }
 
-  async getTicketPriorities() {
-    const { data, error } = await this.supabase.from("ticket_priorities").select("*").order("name");
-    return { data, error };
+  async getTicketPriorities(): Promise<TicketPriority[]> {
+    return this.unwrapList(
+      await this.supabase.from("ticket_priorities").select("*").order("name"),
+      "getTicketPriorities",
+    );
   }
 
   async updateTicketPriority(id: number, updates: Partial<TicketPriority>): Promise<TicketPriority> {
@@ -672,9 +688,8 @@ export class TicketService {
     return { data, error };
   }
 
-  async getAssignees() {
-    const { data, error } = await this.supabase.from("assignee").select("*").order("name");
-    return { data, error };
+  async getAssignees(): Promise<Assignee[]> {
+    return this.unwrapList(await this.supabase.from("assignee").select("*").order("name"), "getAssignees");
   }
 
   async updateAssignee(id: number, updates: Partial<Assignee>) {
@@ -984,9 +999,8 @@ export class TicketService {
     );
   }
 
-  async getDemarcations() {
-    const { data, error } = await this.supabase.from("demarcations").select("*").order("name");
-    return { data, error };
+  async getDemarcations(): Promise<Demarcation[]> {
+    return this.unwrapList(await this.supabase.from("demarcations").select("*").order("name"), "getDemarcations");
   }
 
   async updateDemarcation(id: number, updates: Partial<Demarcation>): Promise<Demarcation> {
@@ -1005,9 +1019,8 @@ export class TicketService {
     return this.unwrap(await this.supabase.from("links").insert(link).select().single(), "createLink");
   }
 
-  async getLinks() {
-    const { data, error } = await this.supabase.from("links").select("*").order("name");
-    return { data, error };
+  async getLinks(): Promise<Link[]> {
+    return this.unwrapList(await this.supabase.from("links").select("*").order("name"), "getLinks");
   }
 
   async updateLink(id: number, updates: Partial<Link>): Promise<Link> {
@@ -1026,9 +1039,8 @@ export class TicketService {
     return this.unwrap(await this.supabase.from("sites").insert(site).select().single(), "createSite");
   }
 
-  async getSites() {
-    const { data, error } = await this.supabase.from("sites").select("*").order("name");
-    return { data, error };
+  async getSites(): Promise<Site[]> {
+    return this.unwrapList(await this.supabase.from("sites").select("*").order("name"), "getSites");
   }
 
   async updateSite(id: number, updates: Partial<Site>): Promise<Site> {
@@ -1050,9 +1062,8 @@ export class TicketService {
     );
   }
 
-  async getServiceTypes() {
-    const { data, error } = await this.supabase.from("service_types").select("*").order("name");
-    return { data, error };
+  async getServiceTypes(): Promise<ServiceType[]> {
+    return this.unwrapList(await this.supabase.from("service_types").select("*").order("name"), "getServiceTypes");
   }
 
   async updateServiceType(id: number, updates: Partial<ServiceType>): Promise<ServiceType> {
@@ -1074,9 +1085,11 @@ export class TicketService {
     );
   }
 
-  async getDetectionSources() {
-    const { data, error } = await this.supabase.from("detection_sources").select("*").order("name");
-    return { data, error };
+  async getDetectionSources(): Promise<DetectionSource[]> {
+    return this.unwrapList(
+      await this.supabase.from("detection_sources").select("*").order("name"),
+      "getDetectionSources",
+    );
   }
 
   async updateDetectionSource(id: number, updates: Partial<DetectionSource>): Promise<DetectionSource> {
@@ -1098,9 +1111,8 @@ export class TicketService {
     );
   }
 
-  async getTrafficImpacts() {
-    const { data, error } = await this.supabase.from("traffic_impacts").select("*").order("name");
-    return { data, error };
+  async getTrafficImpacts(): Promise<TrafficImpact[]> {
+    return this.unwrapList(await this.supabase.from("traffic_impacts").select("*").order("name"), "getTrafficImpacts");
   }
 
   async updateTrafficImpact(id: number, updates: Partial<TrafficImpact>): Promise<TrafficImpact> {

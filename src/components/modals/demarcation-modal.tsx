@@ -49,13 +49,8 @@ export default function DemarcationModal({ isOpen, onOpenChange, onDemarcationsC
   const loadDemarcations = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getDemarcations();
-      if (error) {
-        toast.error("Failed to load demarcations");
-        console.error("Error loading demarcations:", error);
-      } else {
-        setDemarcations(data || []);
-      }
+      const data = await ticketService.getDemarcations();
+      setDemarcations(data);
     } catch (error) {
       toast.error("Failed to load demarcations");
       console.error("Error loading demarcations:", error);

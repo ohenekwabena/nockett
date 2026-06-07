@@ -153,16 +153,16 @@ export class ExportService {
     const worksheet = workbook.addWorksheet("Tickets Import Template");
 
     const [
-      { data: categories },
-      { data: priorities },
-      { data: assignees },
+      categories,
+      priorities,
+      assignees,
       { data: users },
-      { data: demarcations },
-      { data: links },
-      { data: sites },
-      { data: serviceTypes },
-      { data: detectionSources },
-      { data: trafficImpacts },
+      demarcations,
+      links,
+      sites,
+      serviceTypes,
+      detectionSources,
+      trafficImpacts,
     ] = await Promise.all([
       ticketService.getTicketCategories(),
       ticketService.getTicketPriorities(),
@@ -350,19 +350,14 @@ export class ExportService {
       throw new Error("No worksheet found in the uploaded file");
     }
 
-    const [
-      { data: categories, error: categoriesError },
-      { data: assignees, error: assigneesError },
-      { data: priorities, error: prioritiesError },
-      { data: users, error: usersError },
-    ] = await Promise.all([
+    const [categories, assignees, priorities, { data: users, error: usersError }] = await Promise.all([
       ticketService.getTicketCategories(),
       ticketService.getAssignees(),
       ticketService.getTicketPriorities(),
       ticketService.getUsers(),
     ]);
 
-    if (categoriesError || assigneesError || prioritiesError || usersError) {
+    if (usersError) {
       throw new Error("Failed to load ticket reference data for import");
     }
 

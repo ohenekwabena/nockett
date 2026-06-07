@@ -161,15 +161,15 @@ export default function CreateTicketModal({
   const loadDropdownData = async () => {
     try {
       const [
-        categoriesRes,
-        prioritiesRes,
-        assigneesRes,
-        demarcationsRes,
-        linksRes,
-        sitesRes,
-        serviceTypesRes,
-        detectionSourcesRes,
-        trafficImpactsRes,
+        categories,
+        priorities,
+        assignees,
+        demarcations,
+        links,
+        sites,
+        serviceTypes,
+        detectionSources,
+        trafficImpacts,
       ] = await Promise.all([
         ticketService.getTicketCategories(),
         ticketService.getTicketPriorities(),
@@ -182,15 +182,15 @@ export default function CreateTicketModal({
         ticketService.getTrafficImpacts(),
       ]);
 
-      if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (prioritiesRes.data) setPriorities(prioritiesRes.data);
-      if (assigneesRes.data) setAssignees(assigneesRes.data);
-      if (demarcationsRes.data) setDemarcations(demarcationsRes.data);
-      if (linksRes.data) setLinks(linksRes.data);
-      if (sitesRes.data) setSites(sitesRes.data);
-      if (serviceTypesRes.data) setServiceTypes(serviceTypesRes.data);
-      if (detectionSourcesRes.data) setDetectionSources(detectionSourcesRes.data);
-      if (trafficImpactsRes.data) setTrafficImpacts(trafficImpactsRes.data);
+      setCategories(categories);
+      setPriorities(priorities);
+      setAssignees(assignees);
+      setDemarcations(demarcations);
+      setLinks(links);
+      setSites(sites);
+      setServiceTypes(serviceTypes);
+      setDetectionSources(detectionSources);
+      setTrafficImpacts(trafficImpacts);
     } catch (err) {
       console.error("Error loading dropdown data:", err);
     }
