@@ -1,14 +1,5 @@
 import { createClient } from "@/api/supabase/client";
-
-// Send email via server-side API route to avoid exposing RESEND_API_KEY on the client
-async function sendEmailViaApi(to: string, subject: string, type: string, props: Record<string, unknown>) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
-  await fetch(`${baseUrl}/api/email/ticket`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ to, subject, type, props }),
-  });
-}
+import { notifyTicketCreated, notifyTicketStatusChanged } from "@/lib/ticket-notifications";
 
 // Type definitions
 export interface Ticket {
@@ -244,22 +235,10 @@ export class TicketService {
     const { data, error } = await this.supabase.from("tickets").insert(snakeCaseTicket).select().single();
     // Transform response back to camelCase
     if (data) {
-      // Send email notification for ticket creation (react-email template)
-      try {
-        const creatorEmail = ticket.creator_id ? await this.getUserEmail(ticket.creator_id) : "admin@yourdomain.com";
-        let creatorName: string | undefined = undefined;
-        if (ticket.creator_id) {
-          const userResult = await this.getUserById(ticket.creator_id);
-          creatorName = userResult.data?.name;
-        }
-        await sendEmailViaApi(creatorEmail, `Ticket Created: ${ticket.title}`, "ticket-created", {
-          title: ticket.title,
-          description: ticket.description,
-          status: ticket.status,
-          creatorName: creatorName,
-        });
-      } catch (e) {
-        console.error("Failed to send ticket creation email", e);
+      // Notify the creator; failures are logged, not swallowed, and never block creation.
+      const notification = await notifyTicketCreated(ticket);
+      if (!notification.ok) {
+        console.error("Failed to send ticket creation email:", notification.error);
       }
       return { data: this.transformTicket(data), error };
     }
@@ -388,50 +367,19 @@ export class TicketService {
       .single();
     // Transform response back to camelCase
     if (data) {
-      // Send email notification for status change or closure (react-email template)
-      try {
-        const updatedTicket = this.transformTicket(data);
-        if (typeof updates.status !== "undefined") {
-          const creatorEmail = updatedTicket.creator_id
-            ? await this.getUserEmail(updatedTicket.creator_id)
-            : "admin@yourdomain.com";
-          let updaterName: string | undefined = undefined;
-          if (updatedTicket.assignee_id) {
-            updaterName = await this.getAssigneeName(updatedTicket.assignee_id);
-          }
-          if (updatedTicket.status === "CLOSED") {
-            await sendEmailViaApi(creatorEmail, `Ticket Closed: ${updatedTicket.title}`, "ticket-closed", {
-              title: updatedTicket.title,
-              closerName: updaterName,
-            });
-          } else {
-            await sendEmailViaApi(creatorEmail, `Ticket Status Updated: ${updatedTicket.title}`, "ticket-updated", {
-              title: updatedTicket.title,
-              oldStatus: updates.status ?? "",
-              newStatus: updatedTicket.status,
-              updaterName: updaterName,
-            });
-          }
+      // Notify the creator on status change; failures are logged, not swallowed.
+      const updatedTicket = this.transformTicket(data);
+      if (typeof updates.status !== "undefined") {
+        const notification = await notifyTicketStatusChanged(updatedTicket);
+        if (!notification.ok) {
+          console.error("Failed to send ticket update email:", notification.error);
         }
-      } catch (e) {
-        console.error("Failed to send ticket update email", e);
       }
       return { data: this.transformTicket(data), error };
     }
     return { data, error };
   }
 
-  // Helper to get assignee name by id
-  async getAssigneeName(assigneeId: number): Promise<string | undefined> {
-    const { data } = await this.supabase.from("assignees").select("name").eq("id", assigneeId).single();
-    return data?.name;
-  }
-
-  // Helper to get user email by id
-  async getUserEmail(userId: string): Promise<string> {
-    const { data } = await this.supabase.from("users").select("email").eq("id", userId).single();
-    return data?.email || "admin@yourdomain.com";
-  }
   async deleteTicket(id: string) {
     const { data, error } = await this.supabase.from("tickets").delete().eq("id", id);
     return { data, error };
