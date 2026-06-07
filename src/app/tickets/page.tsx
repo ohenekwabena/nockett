@@ -83,26 +83,18 @@ export default function TicketsPage() {
           ticket.ticket_number?.toLowerCase().includes(searchLower);
 
         // Search in category
-        const categoryName = Array.isArray(ticket.ticket_categories)
-          ? ticket.ticket_categories[0]?.name
-          : ticket.ticket_categories?.name;
-        const matchesCategory = categoryName?.toLowerCase().includes(searchLower);
+        const matchesCategory = ticket.ticket_categories?.name?.toLowerCase().includes(searchLower);
 
         // Search in priority
-        const priorityName = Array.isArray(ticket.ticket_priorities)
-          ? ticket.ticket_priorities[0]?.name
-          : ticket.ticket_priorities?.name;
-        const matchesPriority = priorityName?.toLowerCase().includes(searchLower);
+        const matchesPriority = ticket.ticket_priorities?.name?.toLowerCase().includes(searchLower);
 
         // Search in assignee
-        const assigneeName = Array.isArray(ticket.assignee) ? ticket.assignee[0]?.name : ticket.assignee?.name;
-        const matchesAssignee = assigneeName?.toLowerCase().includes(searchLower);
+        const matchesAssignee = ticket.assignee?.name?.toLowerCase().includes(searchLower);
 
         // Search in creator
-        const creatorData = Array.isArray(ticket.users) ? ticket.users[0] : ticket.users;
         const matchesCreator =
-          creatorData?.name?.toLowerCase().includes(searchLower) ||
-          creatorData?.email?.toLowerCase().includes(searchLower);
+          ticket.users?.name?.toLowerCase().includes(searchLower) ||
+          ticket.users?.email?.toLowerCase().includes(searchLower);
 
         return matchesBasic || matchesCategory || matchesPriority || matchesAssignee || matchesCreator;
       });
@@ -118,9 +110,7 @@ export default function TicketsPage() {
     if (currentFilters.categories.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       filtered = filtered.filter((ticket: any) => {
-        const categoryName = Array.isArray(ticket.ticket_categories)
-          ? ticket.ticket_categories[0]?.name?.toUpperCase()
-          : ticket.ticket_categories?.name?.toUpperCase();
+        const categoryName = ticket.ticket_categories?.name?.toUpperCase();
         return categoryName && currentFilters.categories.includes(categoryName);
       });
     }
@@ -129,9 +119,7 @@ export default function TicketsPage() {
     if (currentFilters.priorities.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       filtered = filtered.filter((ticket: any) => {
-        const priorityName = Array.isArray(ticket.ticket_priorities)
-          ? ticket.ticket_priorities[0]?.name?.toUpperCase()
-          : ticket.ticket_priorities?.name?.toUpperCase();
+        const priorityName = ticket.ticket_priorities?.name?.toUpperCase();
         return priorityName && currentFilters.priorities.includes(priorityName);
       });
     }

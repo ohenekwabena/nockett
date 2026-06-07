@@ -421,7 +421,7 @@ export default function TicketModal({
           updateData.priority_id = priorityObj?.id;
           setPriority(value);
           optimisticUpdates = {
-            ticket_priorities: [{ id: priorityObj?.id, name: priorityObj?.name }],
+            ticket_priorities: { id: priorityObj?.id, name: priorityObj?.name },
           };
           break;
         case "category":
@@ -429,7 +429,7 @@ export default function TicketModal({
           updateData.category_id = categoryObj?.id;
           setCategory(value);
           optimisticUpdates = {
-            ticket_categories: [{ id: categoryObj?.id, name: categoryObj?.name }],
+            ticket_categories: { id: categoryObj?.id, name: categoryObj?.name },
           };
           break;
         case "assignee":
@@ -437,7 +437,7 @@ export default function TicketModal({
           setAssigneeId(value === "unassigned" ? "" : value);
           const assigneeObj = assignees.find((a) => a.id.toString() === value);
           optimisticUpdates = {
-            assignee: value === "unassigned" ? null : [{ id: parseInt(value), name: assigneeObj?.name }],
+            assignee: value === "unassigned" ? null : { id: parseInt(value), name: assigneeObj?.name },
           };
           break;
         case "incidentDate":

@@ -2,12 +2,12 @@ import { useState, useCallback } from 'react';
 import { ticketService, type Ticket } from '@/services/ticket-service';
 
 export interface OptimisticTicket extends Ticket {
-    // Joined relations. The read seam now returns single objects (normalized);
-    // the array form is still accepted until NOC-2 batch 2 retires the unwraps.
-    ticket_categories?: { id: number; name: string } | { id: number; name: string }[] | null;
-    ticket_priorities?: { id: number; name: string } | { id: number; name: string }[] | null;
-    assignee?: { id: number; name: string } | { id: number; name: string }[] | null;
-    users?: { id: string; name: string; email: string } | { id: string; name: string; email: string }[] | null;
+    // Joined relations, normalized by the read seam to plain single objects
+    // (never Supabase's T | T[] join shape).
+    ticket_categories?: { id: number; name: string } | null;
+    ticket_priorities?: { id: number; name: string } | null;
+    assignee?: { id: number; name: string } | null;
+    users?: { id: string; name: string; email: string } | null;
 }
 
 export function useOptimisticTickets() {
