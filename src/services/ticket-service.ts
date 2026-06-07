@@ -125,18 +125,6 @@ export interface User {
   created_at?: string;
 }
 
-export interface Role {
-  id: number;
-  name: string;
-}
-
-export interface UserRole {
-  id: number;
-  user_id?: string;
-  role_id?: number;
-  assigned_at?: string;
-}
-
 export interface KnowledgeBase {
   id: number;
   title: string;
@@ -708,43 +696,6 @@ export class TicketService {
 
   async deleteUser(id: string) {
     const { data, error } = await this.supabase.from("users").delete().eq("id", id);
-    return { data, error };
-  }
-
-  // ROLES CRUD
-  async createRole(role: Omit<Role, "id">) {
-    const { data, error } = await this.supabase.from("roles").insert(role).select().single();
-    return { data, error };
-  }
-
-  async getRoles() {
-    const { data, error } = await this.supabase.from("roles").select("*").order("name");
-    return { data, error };
-  }
-
-  async updateRole(id: number, updates: Partial<Role>) {
-    const { data, error } = await this.supabase.from("roles").update(updates).eq("id", id).select().single();
-    return { data, error };
-  }
-
-  async deleteRole(id: number) {
-    const { data, error } = await this.supabase.from("roles").delete().eq("id", id);
-    return { data, error };
-  }
-
-  // USER ROLES CRUD
-  async assignUserRole(userRole: Omit<UserRole, "id" | "assigned_at">) {
-    const { data, error } = await this.supabase.from("user_roles").insert(userRole).select().single();
-    return { data, error };
-  }
-
-  async getUserRoles(userId: string) {
-    const { data, error } = await this.supabase.from("user_roles").select("*, roles(*)").eq("user_id", userId);
-    return { data, error };
-  }
-
-  async removeUserRole(id: number) {
-    const { data, error } = await this.supabase.from("user_roles").delete().eq("id", id);
     return { data, error };
   }
 
