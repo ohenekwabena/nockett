@@ -553,49 +553,23 @@ export default function TicketModal({
           break;
       }
 
-      let sendEmail = false;
-      let emailType = "ticket-updated";
       switch (field) {
         case "status":
           updateData.status = value;
           setStatus(value);
           optimisticUpdates = { status: value };
-          sendEmail = true;
-          if (value === "CLOSED") {
-            emailType = "ticket-closed";
-          }
           break;
       }
 
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        // Fallback to regular update
-        const { error, data } = await ticketService.updateTicket(ticket.id, updateData);
+        // Fallback to regular update. updateTicket owns the status-change
+        // notification, so nothing is emailed from here.
+        const { error } = await ticketService.updateTicket(ticket.id, updateData);
         if (error) {
           toast.error("Failed to update field");
           console.error("Error updating ticket:", error);
-        } else if (sendEmail) {
-          // Send ticket-updated or ticket-closed email notification
-          try {
-            await fetch("/api/email/ticket", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                to: ticket.creator?.email, // Change to assignee or other recipient as needed
-                subject:
-                  emailType === "ticket-closed" ? `Ticket Closed: ${ticket.title}` : `Ticket Updated: ${ticket.title}`,
-                type: emailType,
-                props: {
-                  ...ticket,
-                  status: value,
-                },
-              }),
-            });
-          } catch (e) {
-            // Optionally handle email error
-            console.error("Failed to send ticket update/closed email", e);
-          }
         }
       }
     } catch (err) {
