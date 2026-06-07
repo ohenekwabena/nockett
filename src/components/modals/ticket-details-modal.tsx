@@ -171,8 +171,7 @@ export default function TicketModal({
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [detectionSources, setDetectionSources] = useState<DetectionSource[]>([]);
   const [trafficImpacts, setTrafficImpacts] = useState<TrafficImpact[]>([]);
-  const { user, role } = useSupabase();
-  const isAdmin = role?.toLowerCase() === "admin";
+  const { user, isAdmin } = useSupabase();
 
   // Refetch ticket from database to get latest values
   const refreshTicketData = async () => {
