@@ -72,19 +72,13 @@ export default function TrafficImpactModal({ isOpen, onOpenChange, onTrafficImpa
 
     try {
       setIsCreating(true);
-      const { error } = await ticketService.createTrafficImpact({
+      await ticketService.createTrafficImpact({
         name: newTrafficImpactName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to create traffic impact");
-        console.error("Error creating traffic impact:", error);
-      } else {
-        toast.success("Traffic impact created successfully");
-        setNewTrafficImpactName("");
-        loadTrafficImpacts();
-        onTrafficImpactsChange();
-      }
+      toast.success("Traffic impact created successfully");
+      setNewTrafficImpactName("");
+      loadTrafficImpacts();
+      onTrafficImpactsChange();
     } catch (error) {
       toast.error("Failed to create traffic impact");
       console.error("Error creating traffic impact:", error);
@@ -107,20 +101,14 @@ export default function TrafficImpactModal({ isOpen, onOpenChange, onTrafficImpa
     if (editingId === null) return;
 
     try {
-      const { error } = await ticketService.updateTrafficImpact(editingId, {
+      await ticketService.updateTrafficImpact(editingId, {
         name: editingName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to update traffic impact");
-        console.error("Error updating traffic impact:", error);
-      } else {
-        toast.success("Traffic impact updated successfully");
-        setEditingId(null);
-        setEditingName("");
-        loadTrafficImpacts();
-        onTrafficImpactsChange();
-      }
+      toast.success("Traffic impact updated successfully");
+      setEditingId(null);
+      setEditingName("");
+      loadTrafficImpacts();
+      onTrafficImpactsChange();
     } catch (error) {
       toast.error("Failed to update traffic impact");
       console.error("Error updating traffic impact:", error);
@@ -136,17 +124,11 @@ export default function TrafficImpactModal({ isOpen, onOpenChange, onTrafficImpa
     if (deleteId === null) return;
 
     try {
-      const { error } = await ticketService.deleteTrafficImpact(deleteId);
-
-      if (error) {
-        toast.error("Failed to delete traffic impact");
-        console.error("Error deleting traffic impact:", error);
-      } else {
-        toast.success("Traffic impact deleted successfully");
-        setDeleteId(null);
-        loadTrafficImpacts();
-        onTrafficImpactsChange();
-      }
+      await ticketService.deleteTrafficImpact(deleteId);
+      toast.success("Traffic impact deleted successfully");
+      setDeleteId(null);
+      loadTrafficImpacts();
+      onTrafficImpactsChange();
     } catch (error) {
       toast.error("Failed to delete traffic impact");
       console.error("Error deleting traffic impact:", error);

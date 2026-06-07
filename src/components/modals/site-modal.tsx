@@ -72,19 +72,13 @@ export default function SiteModal({ isOpen, onOpenChange, onSitesChange }: SiteM
 
     try {
       setIsCreating(true);
-      const { error } = await ticketService.createSite({
+      await ticketService.createSite({
         name: newSiteName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to create site");
-        console.error("Error creating site:", error);
-      } else {
-        toast.success("Site created successfully");
-        setNewSiteName("");
-        loadSites();
-        onSitesChange();
-      }
+      toast.success("Site created successfully");
+      setNewSiteName("");
+      loadSites();
+      onSitesChange();
     } catch (error) {
       toast.error("Failed to create site");
       console.error("Error creating site:", error);
@@ -107,20 +101,14 @@ export default function SiteModal({ isOpen, onOpenChange, onSitesChange }: SiteM
     if (editingId === null) return;
 
     try {
-      const { error } = await ticketService.updateSite(editingId, {
+      await ticketService.updateSite(editingId, {
         name: editingName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to update site");
-        console.error("Error updating site:", error);
-      } else {
-        toast.success("Site updated successfully");
-        setEditingId(null);
-        setEditingName("");
-        loadSites();
-        onSitesChange();
-      }
+      toast.success("Site updated successfully");
+      setEditingId(null);
+      setEditingName("");
+      loadSites();
+      onSitesChange();
     } catch (error) {
       toast.error("Failed to update site");
       console.error("Error updating site:", error);
@@ -136,17 +124,11 @@ export default function SiteModal({ isOpen, onOpenChange, onSitesChange }: SiteM
     if (deleteId === null) return;
 
     try {
-      const { error } = await ticketService.deleteSite(deleteId);
-
-      if (error) {
-        toast.error("Failed to delete site");
-        console.error("Error deleting site:", error);
-      } else {
-        toast.success("Site deleted successfully");
-        setDeleteId(null);
-        loadSites();
-        onSitesChange();
-      }
+      await ticketService.deleteSite(deleteId);
+      toast.success("Site deleted successfully");
+      setDeleteId(null);
+      loadSites();
+      onSitesChange();
     } catch (error) {
       toast.error("Failed to delete site");
       console.error("Error deleting site:", error);

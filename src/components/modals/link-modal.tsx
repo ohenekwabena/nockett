@@ -72,19 +72,13 @@ export default function LinkModal({ isOpen, onOpenChange, onLinksChange }: LinkM
 
     try {
       setIsCreating(true);
-      const { error } = await ticketService.createLink({
+      await ticketService.createLink({
         name: newLinkName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to create link");
-        console.error("Error creating link:", error);
-      } else {
-        toast.success("Link created successfully");
-        setNewLinkName("");
-        loadLinks();
-        onLinksChange();
-      }
+      toast.success("Link created successfully");
+      setNewLinkName("");
+      loadLinks();
+      onLinksChange();
     } catch (error) {
       toast.error("Failed to create link");
       console.error("Error creating link:", error);
@@ -107,20 +101,14 @@ export default function LinkModal({ isOpen, onOpenChange, onLinksChange }: LinkM
     if (editingId === null) return;
 
     try {
-      const { error } = await ticketService.updateLink(editingId, {
+      await ticketService.updateLink(editingId, {
         name: editingName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to update link");
-        console.error("Error updating link:", error);
-      } else {
-        toast.success("Link updated successfully");
-        setEditingId(null);
-        setEditingName("");
-        loadLinks();
-        onLinksChange();
-      }
+      toast.success("Link updated successfully");
+      setEditingId(null);
+      setEditingName("");
+      loadLinks();
+      onLinksChange();
     } catch (error) {
       toast.error("Failed to update link");
       console.error("Error updating link:", error);
@@ -136,17 +124,11 @@ export default function LinkModal({ isOpen, onOpenChange, onLinksChange }: LinkM
     if (deleteId === null) return;
 
     try {
-      const { error } = await ticketService.deleteLink(deleteId);
-
-      if (error) {
-        toast.error("Failed to delete link");
-        console.error("Error deleting link:", error);
-      } else {
-        toast.success("Link deleted successfully");
-        setDeleteId(null);
-        loadLinks();
-        onLinksChange();
-      }
+      await ticketService.deleteLink(deleteId);
+      toast.success("Link deleted successfully");
+      setDeleteId(null);
+      loadLinks();
+      onLinksChange();
     } catch (error) {
       toast.error("Failed to delete link");
       console.error("Error deleting link:", error);

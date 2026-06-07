@@ -196,6 +196,16 @@ export interface TrafficImpact {
 export class TicketService {
   private supabase = createClient();
 
+  /**
+   * Unwrap a Supabase `{ data, error }` result for the throwing read/write seam
+   * (ADR-0002): return the value or throw a contextual error, so callers get a
+   * domain value or an exception — never the Postgres envelope.
+   */
+  private unwrap<T>(result: { data: T | null; error: { message: string } | null }, op: string): T {
+    if (result.error) throw new Error(`ticketService.${op} failed: ${result.error.message}`);
+    return result.data as T;
+  }
+
   // Transform snake_case database columns to camelCase
   private transformTicket(dbTicket: any): Ticket {
     return {
@@ -444,9 +454,11 @@ export class TicketService {
   }
 
   // TICKET CATEGORIES CRUD
-  async createTicketCategory(category: Omit<TicketCategory, "id">) {
-    const { data, error } = await this.supabase.from("ticket_categories").insert(category).select().single();
-    return { data, error };
+  async createTicketCategory(category: Omit<TicketCategory, "id">): Promise<TicketCategory> {
+    return this.unwrap(
+      await this.supabase.from("ticket_categories").insert(category).select().single(),
+      "createTicketCategory",
+    );
   }
 
   async getTicketCategories() {
@@ -454,25 +466,23 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateTicketCategory(id: number, updates: Partial<TicketCategory>) {
-    const { data, error } = await this.supabase
-      .from("ticket_categories")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-    return { data, error };
+  async updateTicketCategory(id: number, updates: Partial<TicketCategory>): Promise<TicketCategory> {
+    return this.unwrap(
+      await this.supabase.from("ticket_categories").update(updates).eq("id", id).select().single(),
+      "updateTicketCategory",
+    );
   }
 
-  async deleteTicketCategory(id: number) {
-    const { data, error } = await this.supabase.from("ticket_categories").delete().eq("id", id);
-    return { data, error };
+  async deleteTicketCategory(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("ticket_categories").delete().eq("id", id), "deleteTicketCategory");
   }
 
   // TICKET PRIORITIES CRUD
-  async createTicketPriority(priority: Omit<TicketPriority, "id">) {
-    const { data, error } = await this.supabase.from("ticket_priorities").insert(priority).select().single();
-    return { data, error };
+  async createTicketPriority(priority: Omit<TicketPriority, "id">): Promise<TicketPriority> {
+    return this.unwrap(
+      await this.supabase.from("ticket_priorities").insert(priority).select().single(),
+      "createTicketPriority",
+    );
   }
 
   async getTicketPriorities() {
@@ -480,19 +490,15 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateTicketPriority(id: number, updates: Partial<TicketPriority>) {
-    const { data, error } = await this.supabase
-      .from("ticket_priorities")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-    return { data, error };
+  async updateTicketPriority(id: number, updates: Partial<TicketPriority>): Promise<TicketPriority> {
+    return this.unwrap(
+      await this.supabase.from("ticket_priorities").update(updates).eq("id", id).select().single(),
+      "updateTicketPriority",
+    );
   }
 
-  async deleteTicketPriority(id: number) {
-    const { data, error } = await this.supabase.from("ticket_priorities").delete().eq("id", id);
-    return { data, error };
+  async deleteTicketPriority(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("ticket_priorities").delete().eq("id", id), "deleteTicketPriority");
   }
 
   // TICKET COMMENTS CRUD
@@ -971,9 +977,11 @@ export class TicketService {
   }
 
   // DEMARCATION CRUD
-  async createDemarcation(demarcation: Omit<Demarcation, "id">) {
-    const { data, error } = await this.supabase.from("demarcations").insert(demarcation).select().single();
-    return { data, error };
+  async createDemarcation(demarcation: Omit<Demarcation, "id">): Promise<Demarcation> {
+    return this.unwrap(
+      await this.supabase.from("demarcations").insert(demarcation).select().single(),
+      "createDemarcation",
+    );
   }
 
   async getDemarcations() {
@@ -981,20 +989,20 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateDemarcation(id: number, updates: Partial<Demarcation>) {
-    const { data, error } = await this.supabase.from("demarcations").update(updates).eq("id", id).select().single();
-    return { data, error };
+  async updateDemarcation(id: number, updates: Partial<Demarcation>): Promise<Demarcation> {
+    return this.unwrap(
+      await this.supabase.from("demarcations").update(updates).eq("id", id).select().single(),
+      "updateDemarcation",
+    );
   }
 
-  async deleteDemarcation(id: number) {
-    const { data, error } = await this.supabase.from("demarcations").delete().eq("id", id);
-    return { data, error };
+  async deleteDemarcation(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("demarcations").delete().eq("id", id), "deleteDemarcation");
   }
 
   // LINK CRUD
-  async createLink(link: Omit<Link, "id">) {
-    const { data, error } = await this.supabase.from("links").insert(link).select().single();
-    return { data, error };
+  async createLink(link: Omit<Link, "id">): Promise<Link> {
+    return this.unwrap(await this.supabase.from("links").insert(link).select().single(), "createLink");
   }
 
   async getLinks() {
@@ -1002,20 +1010,20 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateLink(id: number, updates: Partial<Link>) {
-    const { data, error } = await this.supabase.from("links").update(updates).eq("id", id).select().single();
-    return { data, error };
+  async updateLink(id: number, updates: Partial<Link>): Promise<Link> {
+    return this.unwrap(
+      await this.supabase.from("links").update(updates).eq("id", id).select().single(),
+      "updateLink",
+    );
   }
 
-  async deleteLink(id: number) {
-    const { data, error } = await this.supabase.from("links").delete().eq("id", id);
-    return { data, error };
+  async deleteLink(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("links").delete().eq("id", id), "deleteLink");
   }
 
   // SITE CRUD
-  async createSite(site: Omit<Site, "id">) {
-    const { data, error } = await this.supabase.from("sites").insert(site).select().single();
-    return { data, error };
+  async createSite(site: Omit<Site, "id">): Promise<Site> {
+    return this.unwrap(await this.supabase.from("sites").insert(site).select().single(), "createSite");
   }
 
   async getSites() {
@@ -1023,20 +1031,23 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateSite(id: number, updates: Partial<Site>) {
-    const { data, error } = await this.supabase.from("sites").update(updates).eq("id", id).select().single();
-    return { data, error };
+  async updateSite(id: number, updates: Partial<Site>): Promise<Site> {
+    return this.unwrap(
+      await this.supabase.from("sites").update(updates).eq("id", id).select().single(),
+      "updateSite",
+    );
   }
 
-  async deleteSite(id: number) {
-    const { data, error } = await this.supabase.from("sites").delete().eq("id", id);
-    return { data, error };
+  async deleteSite(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("sites").delete().eq("id", id), "deleteSite");
   }
 
   // SERVICE TYPE CRUD
-  async createServiceType(serviceType: Omit<ServiceType, "id">) {
-    const { data, error } = await this.supabase.from("service_types").insert(serviceType).select().single();
-    return { data, error };
+  async createServiceType(serviceType: Omit<ServiceType, "id">): Promise<ServiceType> {
+    return this.unwrap(
+      await this.supabase.from("service_types").insert(serviceType).select().single(),
+      "createServiceType",
+    );
   }
 
   async getServiceTypes() {
@@ -1044,20 +1055,23 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateServiceType(id: number, updates: Partial<ServiceType>) {
-    const { data, error } = await this.supabase.from("service_types").update(updates).eq("id", id).select().single();
-    return { data, error };
+  async updateServiceType(id: number, updates: Partial<ServiceType>): Promise<ServiceType> {
+    return this.unwrap(
+      await this.supabase.from("service_types").update(updates).eq("id", id).select().single(),
+      "updateServiceType",
+    );
   }
 
-  async deleteServiceType(id: number) {
-    const { data, error } = await this.supabase.from("service_types").delete().eq("id", id);
-    return { data, error };
+  async deleteServiceType(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("service_types").delete().eq("id", id), "deleteServiceType");
   }
 
   // DETECTION SOURCE CRUD
-  async createDetectionSource(detectionSource: Omit<DetectionSource, "id">) {
-    const { data, error } = await this.supabase.from("detection_sources").insert(detectionSource).select().single();
-    return { data, error };
+  async createDetectionSource(detectionSource: Omit<DetectionSource, "id">): Promise<DetectionSource> {
+    return this.unwrap(
+      await this.supabase.from("detection_sources").insert(detectionSource).select().single(),
+      "createDetectionSource",
+    );
   }
 
   async getDetectionSources() {
@@ -1065,25 +1079,23 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateDetectionSource(id: number, updates: Partial<DetectionSource>) {
-    const { data, error } = await this.supabase
-      .from("detection_sources")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-    return { data, error };
+  async updateDetectionSource(id: number, updates: Partial<DetectionSource>): Promise<DetectionSource> {
+    return this.unwrap(
+      await this.supabase.from("detection_sources").update(updates).eq("id", id).select().single(),
+      "updateDetectionSource",
+    );
   }
 
-  async deleteDetectionSource(id: number) {
-    const { data, error } = await this.supabase.from("detection_sources").delete().eq("id", id);
-    return { data, error };
+  async deleteDetectionSource(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("detection_sources").delete().eq("id", id), "deleteDetectionSource");
   }
 
   // TRAFFIC IMPACT CRUD
-  async createTrafficImpact(trafficImpact: Omit<TrafficImpact, "id">) {
-    const { data, error } = await this.supabase.from("traffic_impacts").insert(trafficImpact).select().single();
-    return { data, error };
+  async createTrafficImpact(trafficImpact: Omit<TrafficImpact, "id">): Promise<TrafficImpact> {
+    return this.unwrap(
+      await this.supabase.from("traffic_impacts").insert(trafficImpact).select().single(),
+      "createTrafficImpact",
+    );
   }
 
   async getTrafficImpacts() {
@@ -1091,14 +1103,15 @@ export class TicketService {
     return { data, error };
   }
 
-  async updateTrafficImpact(id: number, updates: Partial<TrafficImpact>) {
-    const { data, error } = await this.supabase.from("traffic_impacts").update(updates).eq("id", id).select().single();
-    return { data, error };
+  async updateTrafficImpact(id: number, updates: Partial<TrafficImpact>): Promise<TrafficImpact> {
+    return this.unwrap(
+      await this.supabase.from("traffic_impacts").update(updates).eq("id", id).select().single(),
+      "updateTrafficImpact",
+    );
   }
 
-  async deleteTrafficImpact(id: number) {
-    const { data, error } = await this.supabase.from("traffic_impacts").delete().eq("id", id);
-    return { data, error };
+  async deleteTrafficImpact(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("traffic_impacts").delete().eq("id", id), "deleteTrafficImpact");
   }
 }
 

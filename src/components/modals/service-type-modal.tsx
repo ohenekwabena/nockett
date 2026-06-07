@@ -72,19 +72,13 @@ export default function ServiceTypeModal({ isOpen, onOpenChange, onServiceTypesC
 
     try {
       setIsCreating(true);
-      const { error } = await ticketService.createServiceType({
+      await ticketService.createServiceType({
         name: newServiceTypeName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to create service type");
-        console.error("Error creating service type:", error);
-      } else {
-        toast.success("Service type created successfully");
-        setNewServiceTypeName("");
-        loadServiceTypes();
-        onServiceTypesChange();
-      }
+      toast.success("Service type created successfully");
+      setNewServiceTypeName("");
+      loadServiceTypes();
+      onServiceTypesChange();
     } catch (error) {
       toast.error("Failed to create service type");
       console.error("Error creating service type:", error);
@@ -107,20 +101,14 @@ export default function ServiceTypeModal({ isOpen, onOpenChange, onServiceTypesC
     if (editingId === null) return;
 
     try {
-      const { error } = await ticketService.updateServiceType(editingId, {
+      await ticketService.updateServiceType(editingId, {
         name: editingName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to update service type");
-        console.error("Error updating service type:", error);
-      } else {
-        toast.success("Service type updated successfully");
-        setEditingId(null);
-        setEditingName("");
-        loadServiceTypes();
-        onServiceTypesChange();
-      }
+      toast.success("Service type updated successfully");
+      setEditingId(null);
+      setEditingName("");
+      loadServiceTypes();
+      onServiceTypesChange();
     } catch (error) {
       toast.error("Failed to update service type");
       console.error("Error updating service type:", error);
@@ -136,17 +124,11 @@ export default function ServiceTypeModal({ isOpen, onOpenChange, onServiceTypesC
     if (deleteId === null) return;
 
     try {
-      const { error } = await ticketService.deleteServiceType(deleteId);
-
-      if (error) {
-        toast.error("Failed to delete service type");
-        console.error("Error deleting service type:", error);
-      } else {
-        toast.success("Service type deleted successfully");
-        setDeleteId(null);
-        loadServiceTypes();
-        onServiceTypesChange();
-      }
+      await ticketService.deleteServiceType(deleteId);
+      toast.success("Service type deleted successfully");
+      setDeleteId(null);
+      loadServiceTypes();
+      onServiceTypesChange();
     } catch (error) {
       toast.error("Failed to delete service type");
       console.error("Error deleting service type:", error);
