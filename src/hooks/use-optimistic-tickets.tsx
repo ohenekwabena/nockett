@@ -2,11 +2,12 @@ import { useState, useCallback } from 'react';
 import { ticketService, type Ticket } from '@/services/ticket-service';
 
 export interface OptimisticTicket extends Ticket {
-    // Add fields for joined data
-    ticket_categories?: { id: number; name: string }[];
-    ticket_priorities?: { id: number; name: string }[];
-    assignee?: { id: number; name: string }[];
-    users?: { id: string; name: string; email: string }[];
+    // Joined relations. The read seam now returns single objects (normalized);
+    // the array form is still accepted until NOC-2 batch 2 retires the unwraps.
+    ticket_categories?: { id: number; name: string } | { id: number; name: string }[] | null;
+    ticket_priorities?: { id: number; name: string } | { id: number; name: string }[] | null;
+    assignee?: { id: number; name: string } | { id: number; name: string }[] | null;
+    users?: { id: string; name: string; email: string } | { id: string; name: string; email: string }[] | null;
 }
 
 export function useOptimisticTickets() {
@@ -18,14 +19,10 @@ export function useOptimisticTickets() {
         try {
             setLoading(true);
             setError(null);
-            const { data, error } = await ticketService.getTicketsWithDetails();
-            if (error) {
-                setError(error.message);
-            } else {
-                setTickets(data || []);
-            }
+            const data = await ticketService.readTicketsWithDetails();
+            setTickets(data);
         } catch (err) {
-            setError('Failed to load tickets');
+            setError(err instanceof Error ? err.message : 'Failed to load tickets');
             console.error(err);
         } finally {
             setLoading(false);

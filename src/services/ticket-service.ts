@@ -125,6 +125,35 @@ export interface User {
   created_at?: string;
 }
 
+/**
+ * A Ticket with its joined reference relations normalized to plain single
+ * objects (never Supabase's T | T[] join shape). Produced by the read seam.
+ */
+export interface TicketWithDetails extends Ticket {
+  ticket_categories: TicketCategory | null;
+  ticket_priorities: TicketPriority | null;
+  assignee: Assignee | null;
+  users: { id: string; name: string; email: string } | null;
+}
+
+/** Collapse a Supabase join (which may arrive as an object or a single-element array) to one value. */
+function firstOrNull<T>(relation: T | T[] | null | undefined): T | null {
+  if (Array.isArray(relation)) return relation[0] ?? null;
+  return relation ?? null;
+}
+
+/** Normalize a raw joined tickets row into a TicketWithDetails with plain relation fields. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function normalizeTicketRow(row: any): TicketWithDetails {
+  return {
+    ...row,
+    ticket_categories: firstOrNull<TicketCategory>(row.ticket_categories),
+    ticket_priorities: firstOrNull<TicketPriority>(row.ticket_priorities),
+    assignee: firstOrNull<Assignee>(row.assignee),
+    users: firstOrNull(row.users),
+  };
+}
+
 export interface KnowledgeBase {
   id: number;
   title: string;
@@ -760,40 +789,17 @@ export class TicketService {
     return { data: stats, error: null };
   }
 
-  async getRecentTicketsWithDetails(limit: number = 5) {
-    const { data, error } = await this.supabase
-      .from("tickets")
-      .select(
-        `
-        id,
-        ticket_id,
-        title,
-        description,
-        status,
-        created_at,
-        updated_at,
-        closed_at,
-        site,
-        system,
-        error_code,
-        category_id,
-        priority_id,
-        creator_id,
-        assignee_id,
-        ticket_categories(id, name),
-        ticket_priorities(id, name),
-        assignee(id, name),
-        users!creator_id(id, name, email)
-      `,
-      )
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    return { data, error };
-  }
-
-  // OPTIMIZED METHODS
-  async getTicketsWithDetails(filters?: { status?: string; creator_id?: string; assignee_id?: number }) {
+  // Read seam (ADR-0002): returns normalized domain Tickets and throws on a
+  // data-access error. Callers get plain priority/assignee fields, never
+  // Supabase's { data, error } envelope or its T | T[] join shape. This is the
+  // single parameterized reader that replaced the three near-duplicate
+  // *WithDetails readers.
+  async readTicketsWithDetails(options?: {
+    limit?: number;
+    status?: string;
+    creator_id?: string;
+    assignee_id?: number;
+  }): Promise<TicketWithDetails[]> {
     let query = this.supabase.from("tickets").select(`
         id,
         ticket_id,
@@ -816,61 +822,16 @@ export class TicketService {
         users!creator_id(id, name, email)
       `);
 
-    if (filters?.status) query = query.eq("status", filters.status);
-    if (filters?.creator_id) query = query.eq("creator_id", filters.creator_id);
-    if (filters?.assignee_id) query = query.eq("assignee_id", filters.assignee_id);
+    if (options?.status) query = query.eq("status", options.status);
+    if (options?.creator_id) query = query.eq("creator_id", options.creator_id);
+    if (options?.assignee_id) query = query.eq("assignee_id", options.assignee_id);
 
-    const { data, error } = await query.order("created_at", { ascending: false });
-    return { data, error };
-  }
+    query = query.order("created_at", { ascending: false });
+    if (options?.limit) query = query.limit(options.limit);
 
-  async getTicketByIdWithDetails(id: string) {
-    const { data, error } = await this.supabase
-      .from("tickets")
-      .select(
-        `
-        id,
-        ticket_id,
-        title,
-        description,
-        status,
-        created_at,
-        updated_at,
-        closed_at,
-        site,
-        system,
-        error_code,
-        category_id,
-        priority_id,
-        creator_id,
-        assignee_id,
-        ticket_categories(id, name),
-        ticket_priorities(id, name),
-        assignee(id, name),
-        users!creator_id(id, name, email)
-      `,
-      )
-      .eq("id", id)
-      .single();
-    return { data, error };
-  }
-
-  // HELPER METHODS
-  async getTicketWithDetails(ticketId: string) {
-    const { data, error } = await this.supabase
-      .from("tickets")
-      .select(
-        `
-        *,
-        ticket_categories(name),
-        ticket_priorities(name),
-        assignee(name),
-        users!creator_id(name, email)
-      `,
-      )
-      .eq("id", ticketId)
-      .single();
-    return { data, error };
+    const { data, error } = await query;
+    if (error) throw new Error(`ticketService.readTicketsWithDetails failed: ${error.message}`);
+    return (data ?? []).map(normalizeTicketRow);
   }
 
   async getTicketStats(userId?: string) {
@@ -1163,7 +1124,6 @@ export const {
   getTicketAttachments,
   createTicketHistory,
   getTicketHistory,
-  getTicketWithDetails,
   getTicketStats,
   searchTickets,
 } = ticketService;

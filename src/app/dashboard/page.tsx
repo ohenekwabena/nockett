@@ -46,9 +46,13 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      const [statsResult, ticketsResult] = await Promise.all([
+      const [statsResult, recent] = await Promise.all([
         ticketService.getDashboardStats(),
-        ticketService.getRecentTicketsWithDetails(5),
+        // Recent tickets are non-critical: keep the dashboard usable if they fail.
+        ticketService.readTicketsWithDetails({ limit: 5 }).catch((recentError) => {
+          console.error("Error loading recent tickets:", recentError);
+          return [];
+        }),
       ]);
 
       if (statsResult.error) {
@@ -57,11 +61,7 @@ export default function Dashboard() {
         setStats(statsResult.data);
       }
 
-      if (ticketsResult.error) {
-        console.error("Error loading recent tickets:", ticketsResult.error);
-      } else {
-        setRecentTickets(ticketsResult.data || []);
-      }
+      setRecentTickets(recent);
     } catch (err) {
       setError("Failed to load dashboard data");
       console.error("Dashboard load error:", err);
