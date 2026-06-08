@@ -3,16 +3,8 @@
 import { useState, useEffect } from "react";
 import TicketCard from "@/components/cards/ticket-card";
 import { StatCard } from "@/components/cards/stat-card";
-import { ticketService } from "@/services/ticket-service";
+import { ticketService, type DashboardStats } from "@/services/ticket-service";
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
-
-interface DashboardStats {
-  total: number;
-  open: number;
-  inProgress: number;
-  closed: number;
-  highPriority: number;
-}
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -46,7 +38,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      const [statsResult, recent] = await Promise.all([
+      const [loadedStats, recent] = await Promise.all([
         ticketService.getDashboardStats(),
         // Recent tickets are non-critical: keep the dashboard usable if they fail.
         ticketService.readTicketsWithDetails({ limit: 5 }).catch((recentError) => {
@@ -55,12 +47,7 @@ export default function Dashboard() {
         }),
       ]);
 
-      if (statsResult.error) {
-        setError(statsResult.error.message);
-      } else if (statsResult.data) {
-        setStats(statsResult.data);
-      }
-
+      setStats(loadedStats);
       setRecentTickets(recent);
     } catch (err) {
       setError("Failed to load dashboard data");

@@ -89,30 +89,7 @@ export interface TicketAttachment {
   created_at?: string;
 }
 
-export interface TicketHistory {
-  id: number;
-  ticket_id?: string;
-  action: string;
-  user_id?: string;
-  timestamp?: string;
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  details?: any;
-}
-
-export interface TicketSLATimer {
-  id: number;
-  ticket_id?: string;
-  started_at?: string;
-  breached_at?: string;
-  escalated_at?: string;
-}
-
 export interface Assignee {
-  id: number;
-  name: string;
-}
-
-export interface Department {
   id: number;
   name: string;
 }
@@ -154,15 +131,6 @@ export function normalizeTicketRow(row: any): TicketWithDetails {
   };
 }
 
-export interface KnowledgeBase {
-  id: number;
-  title: string;
-  description?: string;
-  solution?: string;
-  related_ticket_ids?: string[];
-  tags?: string[];
-}
-
 export interface Demarcation {
   id: number;
   name: string;
@@ -191,6 +159,15 @@ export interface DetectionSource {
 export interface TrafficImpact {
   id: number;
   name: string;
+}
+
+/** Aggregate ticket counts shown on the dashboard. */
+export interface DashboardStats {
+  total: number;
+  open: number;
+  inProgress: number;
+  closed: number;
+  highPriority: number;
 }
 
 export class TicketService {
@@ -652,162 +629,36 @@ export class TicketService {
     return data.publicUrl;
   }
 
-  // TICKET HISTORY CRUD
-  async createTicketHistory(history: Omit<TicketHistory, "id" | "timestamp">) {
-    const { data, error } = await this.supabase.from("ticket_history").insert(history).select().single();
-    return { data, error };
-  }
-
-  async getTicketHistory(ticketId: string) {
-    const { data, error } = await this.supabase
-      .from("ticket_history")
-      .select("*")
-      .eq("ticket_id", ticketId)
-      .order("timestamp", { ascending: false });
-    return { data, error };
-  }
-
-  // TICKET SLA TIMERS CRUD
-  async createTicketSLATimer(timer: Omit<TicketSLATimer, "id">) {
-    const { data, error } = await this.supabase.from("ticket_sla_timers").insert(timer).select().single();
-    return { data, error };
-  }
-
-  async getTicketSLATimer(ticketId: string) {
-    const { data, error } = await this.supabase
-      .from("ticket_sla_timers")
-      .select("*")
-      .eq("ticket_id", ticketId)
-      .single();
-    return { data, error };
-  }
-
-  async updateTicketSLATimer(id: number, updates: Partial<TicketSLATimer>) {
-    const { data, error } = await this.supabase
-      .from("ticket_sla_timers")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-    return { data, error };
-  }
-
-  // ASSIGNEES CRUD
-  async createAssignee(assignee: Omit<Assignee, "id">) {
-    const { data, error } = await this.supabase.from("assignee").insert(assignee).select().single();
-    return { data, error };
-  }
-
+  // ASSIGNEES — read-only here; assignee writes live in user-service
   async getAssignees(): Promise<Assignee[]> {
     return this.unwrapList(await this.supabase.from("assignee").select("*").order("name"), "getAssignees");
   }
 
-  async updateAssignee(id: number, updates: Partial<Assignee>) {
-    const { data, error } = await this.supabase.from("assignee").update(updates).eq("id", id).select().single();
-    return { data, error };
-  }
-
-  async deleteAssignee(id: number) {
-    const { data, error } = await this.supabase.from("assignee").delete().eq("id", id);
-    return { data, error };
-  }
-
-  // DEPARTMENTS CRUD
-  async createDepartment(department: Omit<Department, "id">) {
-    const { data, error } = await this.supabase.from("departments").insert(department).select().single();
-    return { data, error };
-  }
-
-  async getDepartments() {
-    const { data, error } = await this.supabase.from("departments").select("*").order("name");
-    return { data, error };
-  }
-
-  async updateDepartment(id: number, updates: Partial<Department>) {
-    const { data, error } = await this.supabase.from("departments").update(updates).eq("id", id).select().single();
-    return { data, error };
-  }
-
-  async deleteDepartment(id: number) {
-    const { data, error } = await this.supabase.from("departments").delete().eq("id", id);
-    return { data, error };
-  }
-
-  // USERS CRUD
-  async createUser(user: Omit<User, "id" | "created_at">) {
-    const { data, error } = await this.supabase.from("users").insert(user).select().single();
-    return { data, error };
-  }
-
+  // USERS — read-only here; user writes live in user-service
   async getUsers(): Promise<User[]> {
     return this.unwrapList(await this.supabase.from("users").select("*").order("name"), "getUsers");
   }
 
-  async getUserById(id: string) {
-    const { data, error } = await this.supabase.from("users").select("*").eq("id", id).single();
-    return { data, error };
-  }
-
-  async updateUser(id: string, updates: Partial<User>) {
-    const { data, error } = await this.supabase.from("users").update(updates).eq("id", id).select().single();
-    return { data, error };
-  }
-
-  async deleteUser(id: string) {
-    const { data, error } = await this.supabase.from("users").delete().eq("id", id);
-    return { data, error };
-  }
-
-  // KNOWLEDGE BASE CRUD
-  async createKnowledgeBase(kb: Omit<KnowledgeBase, "id">) {
-    const { data, error } = await this.supabase.from("knowledge_base").insert(kb).select().single();
-    return { data, error };
-  }
-
-  async getKnowledgeBase(filters?: { tags?: string[] }) {
-    let query = this.supabase.from("knowledge_base").select("*");
-
-    if (filters?.tags?.length) {
-      query = query.overlaps("tags", filters.tags);
-    }
-
-    const { data, error } = await query.order("title");
-    return { data, error };
-  }
-
-  async getKnowledgeBaseById(id: number) {
-    const { data, error } = await this.supabase.from("knowledge_base").select("*").eq("id", id).single();
-    return { data, error };
-  }
-
-  async updateKnowledgeBase(id: number, updates: Partial<KnowledgeBase>) {
-    const { data, error } = await this.supabase.from("knowledge_base").update(updates).eq("id", id).select().single();
-    return { data, error };
-  }
-
-  async deleteKnowledgeBase(id: number) {
-    const { data, error } = await this.supabase.from("knowledge_base").delete().eq("id", id);
-    return { data, error };
-  }
-
   // DASHBOARD OPTIMIZED METHODS
-  async getDashboardStats() {
-    const { data, error } = await this.supabase.from("tickets").select(`
+  // Read seam (ADR-0002): returns the computed dashboard stats and throws on a
+  // data-access error, never Supabase's { data, error } envelope.
+  async getDashboardStats(): Promise<DashboardStats> {
+    const tickets = this.unwrapList(
+      await this.supabase.from("tickets").select(`
         id,
-        status, 
+        status,
         priority_id,
         ticket_priorities(name)
-      `);
+      `),
+      "getDashboardStats",
+    );
 
-    if (error) return { data: null, error };
-
-    // Calculate stats from the data
-    const stats = {
-      total: data.length,
-      open: data.filter((ticket) => ticket.status === "OPEN").length,
-      inProgress: data.filter((ticket) => ticket.status === "IN_PROGRESS").length,
-      closed: data.filter((ticket) => ticket.status === "CLOSED").length,
-      highPriority: data.filter((ticket) => {
+    return {
+      total: tickets.length,
+      open: tickets.filter((ticket) => ticket.status === "OPEN").length,
+      inProgress: tickets.filter((ticket) => ticket.status === "IN_PROGRESS").length,
+      closed: tickets.filter((ticket) => ticket.status === "CLOSED").length,
+      highPriority: tickets.filter((ticket) => {
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         const priorities = ticket.ticket_priorities as any;
         return Array.isArray(priorities)
@@ -815,8 +666,6 @@ export class TicketService {
           : priorities?.name?.toUpperCase() === "HIGH";
       }).length,
     };
-
-    return { data: stats, error: null };
   }
 
   // Read seam (ADR-0002): returns normalized domain Tickets and throws on a
@@ -862,142 +711,6 @@ export class TicketService {
     const { data, error } = await query;
     if (error) throw new Error(`ticketService.readTicketsWithDetails failed: ${error.message}`);
     return (data ?? []).map(normalizeTicketRow);
-  }
-
-  async getTicketStats(userId?: string) {
-    let query = this.supabase.from("tickets").select("status");
-
-    if (userId) {
-      query = query.eq("creator_id", userId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) return { data: null, error };
-
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const stats = data.reduce((acc: any, ticket: any) => {
-      acc[ticket.status] = (acc[ticket.status] || 0) + 1;
-      return acc;
-    }, {});
-
-    return { data: stats, error: null };
-  }
-
-  async searchTickets(searchTerm: string) {
-    const { data, error } = await this.supabase
-      .from("tickets")
-      .select("*")
-      .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
-      .order("created_at", { ascending: false });
-    return { data, error };
-  }
-
-  // Search method with filters for specific fields
-  async searchTicketsWithFilters(filters: {
-    searchTerm?: string;
-    status?: string;
-    priority?: string;
-    category?: string;
-    assignee?: string;
-    creator?: string;
-    dateFrom?: string;
-    dateTo?: string;
-  }) {
-    let query = this.supabase.from("tickets").select(`
-      id,
-      ticket_id,
-      title,
-      description,
-      status,
-      created_at,
-      updated_at,
-      closed_at,
-      site,
-      system,
-      error_code,
-      category_id,
-      priority_id,
-      creator_id,
-      assignee_id,
-      ticket_number,
-      ticket_categories(id, name),
-      ticket_priorities(id, name),
-      assignee(id, name),
-      users!creator_id(id, name, email)
-    `);
-
-    // Apply search term filter
-    if (filters.searchTerm?.trim()) {
-      const term = filters.searchTerm.trim();
-      query = query.or(`
-        title.ilike.%${term}%,
-        description.ilike.%${term}%,
-        id.ilike.%${term}%,
-        ticket_id.ilike.%${term}%,
-        ticket_number.ilike.%${term}%,
-        site.ilike.%${term}%,
-        system.ilike.%${term}%,
-        error_code.ilike.%${term}%
-      `);
-    }
-
-    // Apply status filter
-    if (filters.status) {
-      query = query.eq("status", filters.status);
-    }
-
-    // Apply date range filter
-    if (filters.dateFrom) {
-      query = query.gte("created_at", filters.dateFrom);
-    }
-    if (filters.dateTo) {
-      query = query.lte("created_at", filters.dateTo);
-    }
-
-    // Apply assignee filter
-    if (filters.assignee) {
-      query = query.eq("assignee_id", parseInt(filters.assignee));
-    }
-
-    // Apply creator filter
-    if (filters.creator) {
-      query = query.eq("creator_id", filters.creator);
-    }
-
-    const { data, error } = await query.order("created_at", { ascending: false });
-    return { data, error };
-  }
-
-  // Quick search for autocomplete suggestions
-  async getSearchSuggestions(searchTerm: string, limit: number = 5) {
-    if (!searchTerm.trim()) {
-      return { data: [], error: null };
-    }
-
-    const term = searchTerm.trim();
-
-    const { data, error } = await this.supabase
-      .from("tickets")
-      .select(
-        `
-        id,
-        title,
-        ticket_number,
-        status
-      `,
-      )
-      .or(
-        `
-        title.ilike.%${term}%,
-        id.ilike.%${term}%,
-        ticket_number.ilike.%${term}%
-      `,
-      )
-      .limit(limit)
-      .order("created_at", { ascending: false });
-
-    return { data, error };
   }
 
   // DEMARCATION CRUD
@@ -1138,26 +851,3 @@ export class TicketService {
 
 // Export singleton instance
 export const ticketService = new TicketService();
-
-// Export individual methods for convenience
-export const {
-  createTicket,
-  getTickets,
-  getTicketById,
-  updateTicket,
-  deleteTicket,
-  createTicketCategory,
-  getTicketCategories,
-  createTicketPriority,
-  getTicketPriorities,
-  createTicketComment,
-  getTicketComments,
-  createTicketNote,
-  getTicketNotes,
-  createTicketAttachment,
-  getTicketAttachments,
-  createTicketHistory,
-  getTicketHistory,
-  getTicketStats,
-  searchTickets,
-} = ticketService;
