@@ -1,59 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye } from "lucide-react";
-import { ticketService } from "@/services/ticket-service";
-import LinkModal from "@/components/modals/link-modal";
 import { EntitiesCardSkeleton } from "@/components/skeletons/entities-card-skeleton";
+import type { ReferenceDescriptor } from "./descriptor";
+import { useReferenceList } from "./use-reference-list";
+import { ReferenceListModal } from "./reference-list-modal";
 
-interface Link {
-  id: number;
-  name: string;
-}
-
-export default function LinkCard() {
-  const [links, setLinks] = useState<Link[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+/**
+ * Generic reference-entity card: a preview list (first 8) with a "View All" that
+ * opens the management modal. Replaces the 10 hand-written *-card components; each
+ * entity is now a {@link ReferenceDescriptor} entry instead of a ~105-line file.
+ */
+export function ReferenceListCard({ descriptor }: { descriptor: ReferenceDescriptor }) {
+  const list = useReferenceList(descriptor);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    loadLinks();
-  }, []);
-
-  const loadLinks = async () => {
-    try {
-      setIsLoading(true);
-      const data = await ticketService.getLinks();
-      setLinks(data);
-    } catch (error) {
-      console.error("Error loading links:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleViewAll = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleLinksChange = () => {
-    loadLinks();
-  };
-
-  if (isLoading) {
+  if (list.isLoading) {
     return <EntitiesCardSkeleton />;
   }
+
+  const { items } = list;
 
   return (
     <>
       <Card className="bg-white dark:bg-gray-800 shadow-md border-none min-w-[300px]">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Links</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">{descriptor.title}</CardTitle>
             <button
-              onClick={handleViewAll}
+              onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer rounded-xl"
             >
               <Eye size={16} />
@@ -64,34 +42,36 @@ export default function LinkCard() {
 
         <CardContent className="pt-0">
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {links.length === 0 ? (
+            {items.length === 0 ? (
               <div className="flex items-center justify-center py-8">
-                <div className="text-sm text-gray-500 dark:text-gray-400">No links found</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">No {descriptor.plural} found</div>
               </div>
             ) : (
-              links.slice(0, 8).map((link) => (
+              items.slice(0, 8).map((item) => (
                 <div
-                  key={link.id}
+                  key={item.id}
                   className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-md"
                 >
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{link.name}</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
                   <Badge variant="secondary" className="text-xs text-gray-600/40 dark:text-gray-300/60">
-                    {link.id}
+                    {item.id}
                   </Badge>
                 </div>
               ))
             )}
           </div>
 
-          {links.length > 8 && (
+          {items.length > 8 && (
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">+{links.length - 8} more links</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                +{items.length - 8} more {descriptor.plural}
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <LinkModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} onLinksChange={handleLinksChange} />
+      <ReferenceListModal descriptor={descriptor} list={list} isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
     </>
   );
 }
