@@ -49,13 +49,8 @@ export default function DemarcationModal({ isOpen, onOpenChange, onDemarcationsC
   const loadDemarcations = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getDemarcations();
-      if (error) {
-        toast.error("Failed to load demarcations");
-        console.error("Error loading demarcations:", error);
-      } else {
-        setDemarcations(data || []);
-      }
+      const data = await ticketService.getDemarcations();
+      setDemarcations(data);
     } catch (error) {
       toast.error("Failed to load demarcations");
       console.error("Error loading demarcations:", error);
@@ -72,19 +67,13 @@ export default function DemarcationModal({ isOpen, onOpenChange, onDemarcationsC
 
     try {
       setIsCreating(true);
-      const { error } = await ticketService.createDemarcation({
+      await ticketService.createDemarcation({
         name: newDemarcationName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to create demarcation");
-        console.error("Error creating demarcation:", error);
-      } else {
-        toast.success("Demarcation created successfully");
-        setNewDemarcationName("");
-        loadDemarcations();
-        onDemarcationsChange();
-      }
+      toast.success("Demarcation created successfully");
+      setNewDemarcationName("");
+      loadDemarcations();
+      onDemarcationsChange();
     } catch (error) {
       toast.error("Failed to create demarcation");
       console.error("Error creating demarcation:", error);
@@ -107,20 +96,14 @@ export default function DemarcationModal({ isOpen, onOpenChange, onDemarcationsC
     if (editingId === null) return;
 
     try {
-      const { error } = await ticketService.updateDemarcation(editingId, {
+      await ticketService.updateDemarcation(editingId, {
         name: editingName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to update demarcation");
-        console.error("Error updating demarcation:", error);
-      } else {
-        toast.success("Demarcation updated successfully");
-        setEditingId(null);
-        setEditingName("");
-        loadDemarcations();
-        onDemarcationsChange();
-      }
+      toast.success("Demarcation updated successfully");
+      setEditingId(null);
+      setEditingName("");
+      loadDemarcations();
+      onDemarcationsChange();
     } catch (error) {
       toast.error("Failed to update demarcation");
       console.error("Error updating demarcation:", error);
@@ -136,17 +119,11 @@ export default function DemarcationModal({ isOpen, onOpenChange, onDemarcationsC
     if (deleteId === null) return;
 
     try {
-      const { error } = await ticketService.deleteDemarcation(deleteId);
-
-      if (error) {
-        toast.error("Failed to delete demarcation");
-        console.error("Error deleting demarcation:", error);
-      } else {
-        toast.success("Demarcation deleted successfully");
-        setDeleteId(null);
-        loadDemarcations();
-        onDemarcationsChange();
-      }
+      await ticketService.deleteDemarcation(deleteId);
+      toast.success("Demarcation deleted successfully");
+      setDeleteId(null);
+      loadDemarcations();
+      onDemarcationsChange();
     } catch (error) {
       toast.error("Failed to delete demarcation");
       console.error("Error deleting demarcation:", error);

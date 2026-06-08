@@ -177,8 +177,9 @@ export default function TicketModal({
   const refreshTicketData = async () => {
     if (!ticket.id) return;
     try {
-      const { data, error } = await ticketService.getTicketById(ticket.id);
-      if (data && !error) {
+      // The read seam returns the ticket and throws on failure (ADR-0002).
+      const data = await ticketService.getTicketById(ticket.id);
+      if (data) {
         const matchedPriority = priorities.find((p) => p.id === data.priority_id);
         const matchedCategory = categories.find((c) => c.id === data.category_id);
         const resolvedPriority = matchedPriority?.name?.toUpperCase() as
@@ -186,7 +187,7 @@ export default function TicketModal({
           | undefined;
 
         // Update local state with fresh data from database
-        setStatus(data.status || "OPEN");
+        setStatus((data.status as TicketModalProps["ticket"]["status"]) || "OPEN");
         setPriority(resolvedPriority || ticket.priority || priority);
         setCategory(
           matchedCategory?.name?.toUpperCase() ||
@@ -252,15 +253,15 @@ export default function TicketModal({
   const loadDropdownData = async () => {
     try {
       const [
-        categoriesRes,
-        prioritiesRes,
-        assigneesRes,
-        demarcationsRes,
-        linksRes,
-        sitesRes,
-        serviceTypesRes,
-        detectionSourcesRes,
-        trafficImpactsRes,
+        categories,
+        priorities,
+        assignees,
+        demarcations,
+        links,
+        sites,
+        serviceTypes,
+        detectionSources,
+        trafficImpacts,
       ] = await Promise.all([
         ticketService.getTicketCategories(),
         ticketService.getTicketPriorities(),
@@ -273,15 +274,15 @@ export default function TicketModal({
         ticketService.getTrafficImpacts(),
       ]);
 
-      if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (prioritiesRes.data) setPriorities(prioritiesRes.data);
-      if (assigneesRes.data) setAssignees(assigneesRes.data);
-      if (demarcationsRes.data) setDemarcations(demarcationsRes.data);
-      if (linksRes.data) setLinks(linksRes.data);
-      if (sitesRes.data) setSites(sitesRes.data);
-      if (serviceTypesRes.data) setServiceTypes(serviceTypesRes.data);
-      if (detectionSourcesRes.data) setDetectionSources(detectionSourcesRes.data);
-      if (trafficImpactsRes.data) setTrafficImpacts(trafficImpactsRes.data);
+      setCategories(categories);
+      setPriorities(priorities);
+      setAssignees(assignees);
+      setDemarcations(demarcations);
+      setLinks(links);
+      setSites(sites);
+      setServiceTypes(serviceTypes);
+      setDetectionSources(detectionSources);
+      setTrafficImpacts(trafficImpacts);
     } catch (err) {
       console.error("Error loading dropdown data:", err);
     }
@@ -291,13 +292,13 @@ export default function TicketModal({
     if (!ticket.id) return;
 
     try {
-      const [commentsRes, notesRes] = await Promise.all([
+      const [comments, notes] = await Promise.all([
         ticketService.getTicketComments(ticket.id),
         ticketService.getTicketNotes(ticket.id),
       ]);
 
-      if (commentsRes.data) setComments(commentsRes.data);
-      if (notesRes.data) setNotes(notesRes.data);
+      setComments(comments);
+      setNotes(notes);
     } catch (err) {
       console.error("Error loading comments and notes:", err);
     }
@@ -306,8 +307,7 @@ export default function TicketModal({
   const loadAttachments = async () => {
     if (!ticket.id) return;
     try {
-      const { data } = await ticketService.getTicketAttachments(ticket.id);
-      if (data) setAttachments(data as TicketAttachment[]);
+      setAttachments(await ticketService.getTicketAttachments(ticket.id));
     } catch (err) {
       console.error("Error loading attachments:", err);
     }
@@ -318,19 +318,14 @@ export default function TicketModal({
 
     setLoading(true);
     try {
-      // Try to create comment with user_id first
-      const result = await ticketService.createTicketComment({
+      await ticketService.createTicketComment({
         ticket_id: ticket.id,
         content: newComment.trim(),
         user_id: user?.id,
       });
 
-      if (!result.error) {
-        setNewComment("");
-        await loadCommentsAndNotes();
-      } else {
-        console.error("Error adding comment:", result.error);
-      }
+      setNewComment("");
+      await loadCommentsAndNotes();
     } catch (err) {
       console.error("Error adding comment:", err);
     } finally {
@@ -343,19 +338,14 @@ export default function TicketModal({
 
     setLoading(true);
     try {
-      // Try to create note with user_id first
-      const result = await ticketService.createTicketNote({
+      await ticketService.createTicketNote({
         ticket_id: ticket.id,
         content: newNote.trim(),
         user_id: user?.id,
       });
 
-      if (!result.error) {
-        setNewNote("");
-        await loadCommentsAndNotes();
-      } else {
-        console.error("Error adding note:", result.error);
-      }
+      setNewNote("");
+      await loadCommentsAndNotes();
     } catch (err) {
       console.error("Error adding note:", err);
     } finally {
@@ -366,14 +356,12 @@ export default function TicketModal({
   const handleDeleteComment = async (commentId: number) => {
     setLoading(true);
     try {
-      const { error } = await ticketService.deleteTicketComment(commentId);
-      if (!error) {
-        await loadCommentsAndNotes();
-        // Add 1000ms delay before closing dialog
-        setTimeout(() => {
-          setCommentToDelete(null);
-        }, 1000);
-      }
+      await ticketService.deleteTicketComment(commentId);
+      await loadCommentsAndNotes();
+      // Add 1000ms delay before closing dialog
+      setTimeout(() => {
+        setCommentToDelete(null);
+      }, 1000);
     } catch (err) {
       console.error("Error deleting comment:", err);
     } finally {
@@ -384,14 +372,12 @@ export default function TicketModal({
   const handleDeleteNote = async (noteId: number) => {
     setLoading(true);
     try {
-      const { error } = await ticketService.deleteTicketNote(noteId);
-      if (!error) {
-        await loadCommentsAndNotes();
-        // Add 1000ms delay before closing dialog
-        setTimeout(() => {
-          setNoteToDelete(null);
-        }, 1000);
-      }
+      await ticketService.deleteTicketNote(noteId);
+      await loadCommentsAndNotes();
+      // Add 1000ms delay before closing dialog
+      setTimeout(() => {
+        setNoteToDelete(null);
+      }, 1000);
     } catch (err) {
       console.error("Error deleting note:", err);
     } finally {
@@ -421,7 +407,7 @@ export default function TicketModal({
           updateData.priority_id = priorityObj?.id;
           setPriority(value);
           optimisticUpdates = {
-            ticket_priorities: [{ id: priorityObj?.id, name: priorityObj?.name }],
+            ticket_priorities: { id: priorityObj?.id, name: priorityObj?.name },
           };
           break;
         case "category":
@@ -429,7 +415,7 @@ export default function TicketModal({
           updateData.category_id = categoryObj?.id;
           setCategory(value);
           optimisticUpdates = {
-            ticket_categories: [{ id: categoryObj?.id, name: categoryObj?.name }],
+            ticket_categories: { id: categoryObj?.id, name: categoryObj?.name },
           };
           break;
         case "assignee":
@@ -437,7 +423,7 @@ export default function TicketModal({
           setAssigneeId(value === "unassigned" ? "" : value);
           const assigneeObj = assignees.find((a) => a.id.toString() === value);
           optimisticUpdates = {
-            assignee: value === "unassigned" ? null : [{ id: parseInt(value), name: assigneeObj?.name }],
+            assignee: value === "unassigned" ? null : { id: parseInt(value), name: assigneeObj?.name },
           };
           break;
         case "incidentDate":
@@ -563,13 +549,10 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        // Fallback to regular update. updateTicket owns the status-change
-        // notification, so nothing is emailed from here.
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update field");
-          console.error("Error updating ticket:", error);
-        }
+        // Fallback to regular update. The write seam throws on failure (ADR-0002)
+        // and updateTicket owns the status-change notification, so nothing is
+        // emailed from here; the catch below surfaces any error.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
     } catch (err) {
       toast.error("Failed to update field");
@@ -591,11 +574,9 @@ export default function TicketModal({
       if (deleteTicketWithOptimism) {
         await deleteTicketWithOptimism(ticket.id);
       } else {
-        // Fallback to regular delete
-        const { error } = await ticketService.deleteTicket(ticket.id);
-        if (!error) {
-          onTicketUpdated();
-        }
+        // Fallback to regular delete; the write seam throws on failure (ADR-0002).
+        await ticketService.deleteTicket(ticket.id);
+        onTicketUpdated();
       }
       onOpenChange?.(false);
     } catch (err) {
@@ -621,14 +602,9 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update title");
-          console.error("Error updating title:", error);
-          setEditedTitle(ticket.title); // Revert on error
-        } else {
-          toast.success("Title updated");
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
+        toast.success("Title updated");
       }
       setIsEditingTitle(false);
     } catch (err) {
@@ -655,14 +631,9 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update description");
-          console.error("Error updating description:", error);
-          setEditedDescription(ticket.description || ""); // Revert on error
-        } else {
-          toast.success("Description updated");
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
+        toast.success("Description updated");
       }
       setIsEditingDescription(false);
     } catch (err) {
@@ -699,12 +670,8 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update root cause level 1");
-          setEditedRootCauseLev1(ticket.rootCauseLev1 || "");
-          return;
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
       toast.success("Root Cause Level 1 updated");
       setIsEditingRootCauseLev1(false);
@@ -736,12 +703,8 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update root cause level 2");
-          setEditedRootCauseLev2(ticket.rootCauseLev2 || "");
-          return;
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
       toast.success("Root Cause Level 2 updated");
       setIsEditingRootCauseLev2(false);
@@ -773,12 +736,8 @@ export default function TicketModal({
       if (updateTicketWithOptimism) {
         await updateTicketWithOptimism(ticket.id, optimisticUpdates, updateData);
       } else {
-        const { error } = await ticketService.updateTicket(ticket.id, updateData);
-        if (error) {
-          toast.error("Failed to update preventive action");
-          setEditedPreventiveAction(ticket.preventiveAction || "");
-          return;
-        }
+        // The write seam throws on failure (ADR-0002); the catch below reverts.
+        await ticketService.updateTicket(ticket.id, updateData);
       }
       toast.success("Preventive Action updated");
       setIsEditingPreventiveAction(false);
@@ -1801,9 +1760,14 @@ export default function TicketModal({
                       if (!ticket.id) return;
                       const files = Array.from(e.dataTransfer.files);
                       setAttachmentLoading(true);
-                      await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
-                      await loadAttachments();
-                      setAttachmentLoading(false);
+                      try {
+                        await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
+                        await loadAttachments();
+                      } catch (err) {
+                        console.error("Error uploading attachments:", err);
+                      } finally {
+                        setAttachmentLoading(false);
+                      }
                     }}
                   >
                     <input
@@ -1817,9 +1781,14 @@ export default function TicketModal({
                         const files = Array.from(e.target.files);
                         e.target.value = "";
                         setAttachmentLoading(true);
-                        await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
-                        await loadAttachments();
-                        setAttachmentLoading(false);
+                        try {
+                          await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
+                          await loadAttachments();
+                        } catch (err) {
+                          console.error("Error uploading attachments:", err);
+                        } finally {
+                          setAttachmentLoading(false);
+                        }
                       }}
                     />
                     {attachmentLoading ? (
@@ -1914,10 +1883,15 @@ export default function TicketModal({
                                     <AlertDialogAction
                                       onClick={async () => {
                                         setAttachmentLoading(true);
-                                        await ticketService.deleteAttachmentWithFile(att.id, att.url);
-                                        setAttachmentToDelete(null);
-                                        await loadAttachments();
-                                        setAttachmentLoading(false);
+                                        try {
+                                          await ticketService.deleteAttachmentWithFile(att.id, att.url);
+                                          setAttachmentToDelete(null);
+                                          await loadAttachments();
+                                        } catch (err) {
+                                          console.error("Error deleting attachment:", err);
+                                        } finally {
+                                          setAttachmentLoading(false);
+                                        }
                                       }}
                                       disabled={attachmentLoading}
                                       className="bg-red-600 hover:bg-red-700 text-white"

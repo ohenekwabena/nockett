@@ -161,15 +161,15 @@ export default function CreateTicketModal({
   const loadDropdownData = async () => {
     try {
       const [
-        categoriesRes,
-        prioritiesRes,
-        assigneesRes,
-        demarcationsRes,
-        linksRes,
-        sitesRes,
-        serviceTypesRes,
-        detectionSourcesRes,
-        trafficImpactsRes,
+        categories,
+        priorities,
+        assignees,
+        demarcations,
+        links,
+        sites,
+        serviceTypes,
+        detectionSources,
+        trafficImpacts,
       ] = await Promise.all([
         ticketService.getTicketCategories(),
         ticketService.getTicketPriorities(),
@@ -182,15 +182,15 @@ export default function CreateTicketModal({
         ticketService.getTrafficImpacts(),
       ]);
 
-      if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (prioritiesRes.data) setPriorities(prioritiesRes.data);
-      if (assigneesRes.data) setAssignees(assigneesRes.data);
-      if (demarcationsRes.data) setDemarcations(demarcationsRes.data);
-      if (linksRes.data) setLinks(linksRes.data);
-      if (sitesRes.data) setSites(sitesRes.data);
-      if (serviceTypesRes.data) setServiceTypes(serviceTypesRes.data);
-      if (detectionSourcesRes.data) setDetectionSources(detectionSourcesRes.data);
-      if (trafficImpactsRes.data) setTrafficImpacts(trafficImpactsRes.data);
+      setCategories(categories);
+      setPriorities(priorities);
+      setAssignees(assignees);
+      setDemarcations(demarcations);
+      setLinks(links);
+      setSites(sites);
+      setServiceTypes(serviceTypes);
+      setDetectionSources(detectionSources);
+      setTrafficImpacts(trafficImpacts);
     } catch (err) {
       console.error("Error loading dropdown data:", err);
     }
@@ -246,36 +246,30 @@ export default function CreateTicketModal({
         trafficImpact: trafficImpact || undefined,
       };
 
-      let result: Awaited<ReturnType<typeof ticketService.createTicket>>;
       if (mode === "create") {
-        result = await ticketService.createTicket(ticketData);
+        // The write seam returns the created ticket and throws on failure (ADR-0002).
+        const created = await ticketService.createTicket(ticketData);
 
-        // If ticket was created successfully and there's an initial note, add it
-        if (!result.error && result.data && initialNote.trim()) {
+        // If there's an initial note, add it
+        if (initialNote.trim()) {
           await ticketService.createTicketNote({
-            ticket_id: result.data.id,
+            ticket_id: created.id,
             content: initialNote.trim(),
             user_id: user?.id,
           });
         }
 
         // Upload pending attachments
-        if (!result.error && result.data && pendingFiles.length > 0) {
-          await Promise.all(
-            pendingFiles.map((file) => ticketService.uploadAttachment(result.data!.id, file, user?.id)),
-          );
+        if (pendingFiles.length > 0) {
+          await Promise.all(pendingFiles.map((file) => ticketService.uploadAttachment(created.id, file, user?.id)));
         }
       } else {
-        result = await ticketService.updateTicket(ticket?.id || "", ticketData);
+        await ticketService.updateTicket(ticket?.id || "", ticketData);
       }
 
-      if (result.error) {
-        setError(result.error.message);
-      } else {
-        onTicketCreated();
-      }
+      onTicketCreated();
     } catch (err) {
-      setError(`An unexpected error occurred: ${err}`);
+      setError(err instanceof Error ? err.message : `An unexpected error occurred: ${err}`);
     } finally {
       setLoading(false);
     }

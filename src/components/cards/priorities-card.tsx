@@ -25,12 +25,8 @@ export default function PrioritiesCard() {
     const loadPriorities = async () => {
         try {
             setIsLoading(true);
-            const { data, error } = await ticketService.getTicketPriorities();
-            if (error) {
-                console.error("Error loading priorities:", error);
-            } else {
-                setPriorities(data || []);
-            }
+            const data = await ticketService.getTicketPriorities();
+            setPriorities(data);
         } catch (error) {
             console.error("Error loading priorities:", error);
         } finally {

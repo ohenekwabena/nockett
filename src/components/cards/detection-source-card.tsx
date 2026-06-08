@@ -25,12 +25,8 @@ export default function DetectionSourceCard() {
   const loadDetectionSources = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getDetectionSources();
-      if (error) {
-        console.error("Error loading detection sources:", error);
-      } else {
-        setDetectionSources(data || []);
-      }
+      const data = await ticketService.getDetectionSources();
+      setDetectionSources(data);
     } catch (error) {
       console.error("Error loading detection sources:", error);
     } finally {

@@ -59,13 +59,8 @@ export default function PrioritiesModal({
     const loadPriorities = async () => {
         try {
             setIsLoading(true);
-            const { data, error } = await ticketService.getTicketPriorities();
-            if (error) {
-                toast.error("Failed to load priorities");
-                console.error("Error loading priorities:", error);
-            } else {
-                setPriorities(data || []);
-            }
+            const data = await ticketService.getTicketPriorities();
+            setPriorities(data);
         } catch (error) {
             toast.error("Failed to load priorities");
             console.error("Error loading priorities:", error);
@@ -82,20 +77,13 @@ export default function PrioritiesModal({
 
         try {
             setIsCreating(true);
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { data, error } = await ticketService.createTicketPriority({
+            await ticketService.createTicketPriority({
                 name: newPriorityName.trim(),
             });
-
-            if (error) {
-                toast.error("Failed to create priority");
-                console.error("Error creating priority:", error);
-            } else {
-                toast.success("Priority created successfully");
-                setNewPriorityName("");
-                loadPriorities();
-                onPrioritiesChange();
-            }
+            toast.success("Priority created successfully");
+            setNewPriorityName("");
+            loadPriorities();
+            onPrioritiesChange();
         } catch (error) {
             toast.error("Failed to create priority");
             console.error("Error creating priority:", error);
@@ -118,21 +106,14 @@ export default function PrioritiesModal({
         if (editingId === null) return;
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { data, error } = await ticketService.updateTicketPriority(editingId, {
+            await ticketService.updateTicketPriority(editingId, {
                 name: editingName.trim(),
             });
-
-            if (error) {
-                toast.error("Failed to update priority");
-                console.error("Error updating priority:", error);
-            } else {
-                toast.success("Priority updated successfully");
-                setEditingId(null);
-                setEditingName("");
-                loadPriorities();
-                onPrioritiesChange();
-            }
+            toast.success("Priority updated successfully");
+            setEditingId(null);
+            setEditingName("");
+            loadPriorities();
+            onPrioritiesChange();
         } catch (error) {
             toast.error("Failed to update priority");
             console.error("Error updating priority:", error);
@@ -148,17 +129,11 @@ export default function PrioritiesModal({
         if (deleteId === null) return;
 
         try {
-            const { error } = await ticketService.deleteTicketPriority(deleteId);
-
-            if (error) {
-                toast.error("Failed to delete priority");
-                console.error("Error deleting priority:", error);
-            } else {
-                toast.success("Priority deleted successfully");
-                setDeleteId(null);
-                loadPriorities();
-                onPrioritiesChange();
-            }
+            await ticketService.deleteTicketPriority(deleteId);
+            toast.success("Priority deleted successfully");
+            setDeleteId(null);
+            loadPriorities();
+            onPrioritiesChange();
         } catch (error) {
             toast.error("Failed to delete priority");
             console.error("Error deleting priority:", error);
