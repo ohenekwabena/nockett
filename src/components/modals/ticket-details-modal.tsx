@@ -100,6 +100,22 @@ interface TicketModalProps {
   deleteTicketWithOptimism?: (ticketId: string) => Promise<void>;
 }
 
+/**
+ * Convert a stored timestamp (an ISO 8601 string with offset, e.g.
+ * "2026-01-30T10:41:00+00:00") into the exact shape an
+ * <input type="datetime-local"> requires: "YYYY-MM-DDTHH:mm" with no offset.
+ *
+ * The input silently renders blank for any other format, which is why imported
+ * tickets showed empty date fields even though the values were in the database.
+ * We slice the wall-clock components instead of going through `new Date()` so the
+ * displayed time is timezone-stable and round-trips with what the user picks.
+ */
+function toDateTimeLocalValue(value?: string): string {
+  if (!value) return "";
+  const match = value.replace(" ", "T").match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+  return match ? match[0] : "";
+}
+
 export default function TicketModal({
   ticket,
   isOpen,
@@ -1363,7 +1379,7 @@ export default function TicketModal({
                           </span>
                           <Input
                             type="datetime-local"
-                            value={incidentDate}
+                            value={toDateTimeLocalValue(incidentDate)}
                             onChange={(e) => handleQuickUpdate("incidentDate", e.target.value)}
                             className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 text-sm"
                             disabled={loading}
@@ -1395,7 +1411,7 @@ export default function TicketModal({
                           </span>
                           <Input
                             type="datetime-local"
-                            value={detectionTime}
+                            value={toDateTimeLocalValue(detectionTime)}
                             onChange={(e) => handleQuickUpdate("detectionTime", e.target.value)}
                             className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 text-sm"
                             disabled={loading}
@@ -1408,7 +1424,7 @@ export default function TicketModal({
                           </span>
                           <Input
                             type="datetime-local"
-                            value={escalationTime}
+                            value={toDateTimeLocalValue(escalationTime)}
                             onChange={(e) => handleQuickUpdate("escalationTime", e.target.value)}
                             className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 text-sm"
                             disabled={loading}
@@ -1421,7 +1437,7 @@ export default function TicketModal({
                           </span>
                           <Input
                             type="datetime-local"
-                            value={providerNotifiedTime}
+                            value={toDateTimeLocalValue(providerNotifiedTime)}
                             onChange={(e) => handleQuickUpdate("providerNotifiedTime", e.target.value)}
                             className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 text-sm"
                             disabled={loading}
@@ -1453,7 +1469,7 @@ export default function TicketModal({
                           </span>
                           <Input
                             type="datetime-local"
-                            value={restorationTimeConfirmed}
+                            value={toDateTimeLocalValue(restorationTimeConfirmed)}
                             onChange={(e) => handleQuickUpdate("restorationTimeConfirmed", e.target.value)}
                             className="w-full sm:w-48 dark:bg-gray-600 bg-gray-200 text-gray-800 dark:text-gray-200 border-0 text-sm"
                             disabled={loading}
