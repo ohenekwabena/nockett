@@ -2,7 +2,6 @@ import AssigneesCard from "@/components/cards/assignees-card";
 import CategoriesCard from "@/components/cards/categories-card";
 import DepartmentsCard from "@/components/cards/departments-card";
 import PrioritiesCard from "@/components/cards/priorities-card";
-import RolesCard from "@/components/cards/roles-card";
 import DemarcationCard from "@/components/cards/demarcation-card";
 import LinkCard from "@/components/cards/link-card";
 import SiteCard from "@/components/cards/site-card";
@@ -26,7 +25,6 @@ export default function EntitiesPage() {
         <CategoriesCard />
         <PrioritiesCard />
         <AssigneesCard />
-        <RolesCard />
         <DepartmentsCard />
         <DemarcationCard />
         <LinkCard />

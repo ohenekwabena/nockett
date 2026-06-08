@@ -25,12 +25,8 @@ export default function LinkCard() {
   const loadLinks = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getLinks();
-      if (error) {
-        console.error("Error loading links:", error);
-      } else {
-        setLinks(data || []);
-      }
+      const data = await ticketService.getLinks();
+      setLinks(data);
     } catch (error) {
       console.error("Error loading links:", error);
     } finally {

@@ -25,12 +25,8 @@ export default function TrafficImpactCard() {
   const loadTrafficImpacts = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getTrafficImpacts();
-      if (error) {
-        console.error("Error loading traffic impacts:", error);
-      } else {
-        setTrafficImpacts(data || []);
-      }
+      const data = await ticketService.getTrafficImpacts();
+      setTrafficImpacts(data);
     } catch (error) {
       console.error("Error loading traffic impacts:", error);
     } finally {

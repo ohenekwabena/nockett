@@ -31,18 +31,11 @@ export default function TicketCard({
 }: TicketCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Extract the related data from the joined query - handle both array and object formats
-  const priority = Array.isArray(ticket.ticket_priorities)
-    ? ticket.ticket_priorities[0]?.name || ""
-    : ticket.ticket_priorities?.name || "";
-
-  const category = Array.isArray(ticket.ticket_categories)
-    ? ticket.ticket_categories[0]?.name || ""
-    : ticket.ticket_categories?.name || "";
-
-  const assignee = Array.isArray(ticket.assignee) ? ticket.assignee[0] || null : ticket.assignee || null;
-
-  const creator = Array.isArray(ticket.users) ? ticket.users[0] || null : ticket.users || null;
+  // Joined relations arrive normalized to plain objects from the read seam.
+  const priority = ticket.ticket_priorities?.name || "";
+  const category = ticket.ticket_categories?.name || "";
+  const assignee = ticket.assignee || null;
+  const creator = ticket.users || null;
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent modal from opening when dragging

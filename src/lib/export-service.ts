@@ -153,16 +153,16 @@ export class ExportService {
     const worksheet = workbook.addWorksheet("Tickets Import Template");
 
     const [
-      { data: categories },
-      { data: priorities },
-      { data: assignees },
-      { data: users },
-      { data: demarcations },
-      { data: links },
-      { data: sites },
-      { data: serviceTypes },
-      { data: detectionSources },
-      { data: trafficImpacts },
+      categories,
+      priorities,
+      assignees,
+      users,
+      demarcations,
+      links,
+      sites,
+      serviceTypes,
+      detectionSources,
+      trafficImpacts,
     ] = await Promise.all([
       ticketService.getTicketCategories(),
       ticketService.getTicketPriorities(),
@@ -350,21 +350,12 @@ export class ExportService {
       throw new Error("No worksheet found in the uploaded file");
     }
 
-    const [
-      { data: categories, error: categoriesError },
-      { data: assignees, error: assigneesError },
-      { data: priorities, error: prioritiesError },
-      { data: users, error: usersError },
-    ] = await Promise.all([
+    const [categories, assignees, priorities, users] = await Promise.all([
       ticketService.getTicketCategories(),
       ticketService.getAssignees(),
       ticketService.getTicketPriorities(),
       ticketService.getUsers(),
     ]);
-
-    if (categoriesError || assigneesError || prioritiesError || usersError) {
-      throw new Error("Failed to load ticket reference data for import");
-    }
 
     const categoryMap = new Map((categories || []).map((item) => [item.name.toLowerCase(), item.id]));
     const assigneeMap = new Map((assignees || []).map((item) => [item.name.toLowerCase(), item.id]));
@@ -477,14 +468,12 @@ export class ExportService {
     }
 
     if (ticketsToCreate.length > 0) {
-      const { data, error } = await ticketService.createTicketsBulk(ticketsToCreate);
-      if (error) {
-        throw new Error(error.message || "Failed to import tickets");
-      }
+      // The write seam returns the created tickets and throws on failure (ADR-0002).
+      const created = await ticketService.createTicketsBulk(ticketsToCreate);
 
       return {
         totalRows,
-        createdCount: data?.length || 0,
+        createdCount: created.length,
         failedRows,
         strictMode,
         aborted: false,

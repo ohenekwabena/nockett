@@ -59,13 +59,8 @@ export default function CategoriesModal({
     const loadCategories = async () => {
         try {
             setIsLoading(true);
-            const { data, error } = await ticketService.getTicketCategories();
-            if (error) {
-                toast.error("Failed to load categories");
-                console.error("Error loading categories:", error);
-            } else {
-                setCategories(data || []);
-            }
+            const data = await ticketService.getTicketCategories();
+            setCategories(data);
         } catch (error) {
             toast.error("Failed to load categories");
             console.error("Error loading categories:", error);
@@ -82,20 +77,13 @@ export default function CategoriesModal({
 
         try {
             setIsCreating(true);
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { data, error } = await ticketService.createTicketCategory({
+            await ticketService.createTicketCategory({
                 name: newCategoryName.trim(),
             });
-
-            if (error) {
-                toast.error("Failed to create category");
-                console.error("Error creating category:", error);
-            } else {
-                toast.success("Category created successfully");
-                setNewCategoryName("");
-                loadCategories();
-                onCategoriesChange();
-            }
+            toast.success("Category created successfully");
+            setNewCategoryName("");
+            loadCategories();
+            onCategoriesChange();
         } catch (error) {
             toast.error("Failed to create category");
             console.error("Error creating category:", error);
@@ -118,21 +106,14 @@ export default function CategoriesModal({
         if (editingId === null) return;
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { data, error } = await ticketService.updateTicketCategory(editingId, {
+            await ticketService.updateTicketCategory(editingId, {
                 name: editingName.trim(),
             });
-
-            if (error) {
-                toast.error("Failed to update category");
-                console.error("Error updating category:", error);
-            } else {
-                toast.success("Category updated successfully");
-                setEditingId(null);
-                setEditingName("");
-                loadCategories();
-                onCategoriesChange();
-            }
+            toast.success("Category updated successfully");
+            setEditingId(null);
+            setEditingName("");
+            loadCategories();
+            onCategoriesChange();
         } catch (error) {
             toast.error("Failed to update category");
             console.error("Error updating category:", error);
@@ -148,17 +129,11 @@ export default function CategoriesModal({
         if (deleteId === null) return;
 
         try {
-            const { error } = await ticketService.deleteTicketCategory(deleteId);
-
-            if (error) {
-                toast.error("Failed to delete category");
-                console.error("Error deleting category:", error);
-            } else {
-                toast.success("Category deleted successfully");
-                setDeleteId(null);
-                loadCategories();
-                onCategoriesChange();
-            }
+            await ticketService.deleteTicketCategory(deleteId);
+            toast.success("Category deleted successfully");
+            setDeleteId(null);
+            loadCategories();
+            onCategoriesChange();
         } catch (error) {
             toast.error("Failed to delete category");
             console.error("Error deleting category:", error);
