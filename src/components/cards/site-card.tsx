@@ -25,12 +25,8 @@ export default function SiteCard() {
   const loadSites = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getSites();
-      if (error) {
-        console.error("Error loading sites:", error);
-      } else {
-        setSites(data || []);
-      }
+      const data = await ticketService.getSites();
+      setSites(data);
     } catch (error) {
       console.error("Error loading sites:", error);
     } finally {

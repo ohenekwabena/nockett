@@ -3,10 +3,12 @@
 import { createClient } from "@/api/supabase/client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, SupabaseClient } from "@supabase/supabase-js";
+import { getProfile, isAdmin as roleIsAdmin, type Role } from "@/lib/identity";
 
 interface AuthContextValue {
   user: User | null;
-  role: string | null;
+  role: Role | null;
+  isAdmin: boolean;
   loading: boolean;
   supabase: SupabaseClient;
 }
@@ -16,19 +18,26 @@ const supabase = createClient();
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   role: null,
+  isAdmin: false,
   loading: true,
   supabase,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserRole = async (userId: string) => {
-    const { data, error } = await supabase.from("users").select("role").eq("id", userId).single();
-
-    setRole(!error && data?.role ? data.role : null);
+  // Role is read through the identity seam (the single source of truth). It
+  // throws on failure, so we catch and fall back to no elevated Role rather
+  // than crash the app — ADR-0002: continue-on-failure must be explicit.
+  const fetchRole = async (userId: string) => {
+    try {
+      const profile = await getProfile(userId);
+      setRole(profile.role);
+    } catch {
+      setRole(null);
+    }
   };
 
   useEffect(() => {
@@ -51,10 +60,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === "SIGNED_IN" && sessionUser) {
         setTimeout(async () => {
-          await fetchUserRole(sessionUser.id);
+          await fetchRole(sessionUser.id);
         }, 0);
       } else if (sessionUser) {
-        fetchUserRole(sessionUser.id);
+        fetchRole(sessionUser.id);
       } else {
         setRole(null);
       }
@@ -66,7 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <AuthContext.Provider value={{ user, role, loading, supabase }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, role, isAdmin: roleIsAdmin(role), loading, supabase }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

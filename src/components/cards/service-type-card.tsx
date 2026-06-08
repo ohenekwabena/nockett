@@ -25,12 +25,8 @@ export default function ServiceTypeCard() {
   const loadServiceTypes = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getServiceTypes();
-      if (error) {
-        console.error("Error loading service types:", error);
-      } else {
-        setServiceTypes(data || []);
-      }
+      const data = await ticketService.getServiceTypes();
+      setServiceTypes(data);
     } catch (error) {
       console.error("Error loading service types:", error);
     } finally {

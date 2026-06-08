@@ -32,13 +32,13 @@ export default function FilterPopup({ onFiltersChange, initialFilters }: FilterP
 
   const loadFilterData = async () => {
     try {
-      const [categoriesRes, prioritiesRes] = await Promise.all([
+      const [categories, priorities] = await Promise.all([
         ticketService.getTicketCategories(),
         ticketService.getTicketPriorities(),
       ]);
 
-      if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (prioritiesRes.data) setPriorities(prioritiesRes.data);
+      setCategories(categories);
+      setPriorities(priorities);
     } catch (err) {
       console.error("Error loading filter data:", err);
     }

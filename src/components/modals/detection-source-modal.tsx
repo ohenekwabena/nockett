@@ -53,13 +53,8 @@ export default function DetectionSourceModal({
   const loadDetectionSources = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await ticketService.getDetectionSources();
-      if (error) {
-        toast.error("Failed to load detection sources");
-        console.error("Error loading detection sources:", error);
-      } else {
-        setDetectionSources(data || []);
-      }
+      const data = await ticketService.getDetectionSources();
+      setDetectionSources(data);
     } catch (error) {
       toast.error("Failed to load detection sources");
       console.error("Error loading detection sources:", error);
@@ -76,19 +71,13 @@ export default function DetectionSourceModal({
 
     try {
       setIsCreating(true);
-      const { error } = await ticketService.createDetectionSource({
+      await ticketService.createDetectionSource({
         name: newDetectionSourceName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to create detection source");
-        console.error("Error creating detection source:", error);
-      } else {
-        toast.success("Detection source created successfully");
-        setNewDetectionSourceName("");
-        loadDetectionSources();
-        onDetectionSourcesChange();
-      }
+      toast.success("Detection source created successfully");
+      setNewDetectionSourceName("");
+      loadDetectionSources();
+      onDetectionSourcesChange();
     } catch (error) {
       toast.error("Failed to create detection source");
       console.error("Error creating detection source:", error);
@@ -111,20 +100,14 @@ export default function DetectionSourceModal({
     if (editingId === null) return;
 
     try {
-      const { error } = await ticketService.updateDetectionSource(editingId, {
+      await ticketService.updateDetectionSource(editingId, {
         name: editingName.trim(),
       });
-
-      if (error) {
-        toast.error("Failed to update detection source");
-        console.error("Error updating detection source:", error);
-      } else {
-        toast.success("Detection source updated successfully");
-        setEditingId(null);
-        setEditingName("");
-        loadDetectionSources();
-        onDetectionSourcesChange();
-      }
+      toast.success("Detection source updated successfully");
+      setEditingId(null);
+      setEditingName("");
+      loadDetectionSources();
+      onDetectionSourcesChange();
     } catch (error) {
       toast.error("Failed to update detection source");
       console.error("Error updating detection source:", error);
@@ -140,17 +123,11 @@ export default function DetectionSourceModal({
     if (deleteId === null) return;
 
     try {
-      const { error } = await ticketService.deleteDetectionSource(deleteId);
-
-      if (error) {
-        toast.error("Failed to delete detection source");
-        console.error("Error deleting detection source:", error);
-      } else {
-        toast.success("Detection source deleted successfully");
-        setDeleteId(null);
-        loadDetectionSources();
-        onDetectionSourcesChange();
-      }
+      await ticketService.deleteDetectionSource(deleteId);
+      toast.success("Detection source deleted successfully");
+      setDeleteId(null);
+      loadDetectionSources();
+      onDetectionSourcesChange();
     } catch (error) {
       toast.error("Failed to delete detection source");
       console.error("Error deleting detection source:", error);

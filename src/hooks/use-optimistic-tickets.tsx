@@ -2,11 +2,12 @@ import { useState, useCallback } from 'react';
 import { ticketService, type Ticket } from '@/services/ticket-service';
 
 export interface OptimisticTicket extends Ticket {
-    // Add fields for joined data
-    ticket_categories?: { id: number; name: string }[];
-    ticket_priorities?: { id: number; name: string }[];
-    assignee?: { id: number; name: string }[];
-    users?: { id: string; name: string; email: string }[];
+    // Joined relations, normalized by the read seam to plain single objects
+    // (never Supabase's T | T[] join shape).
+    ticket_categories?: { id: number; name: string } | null;
+    ticket_priorities?: { id: number; name: string } | null;
+    assignee?: { id: number; name: string } | null;
+    users?: { id: string; name: string; email: string } | null;
 }
 
 export function useOptimisticTickets() {
@@ -18,14 +19,10 @@ export function useOptimisticTickets() {
         try {
             setLoading(true);
             setError(null);
-            const { data, error } = await ticketService.getTicketsWithDetails();
-            if (error) {
-                setError(error.message);
-            } else {
-                setTickets(data || []);
-            }
+            const data = await ticketService.readTicketsWithDetails();
+            setTickets(data);
         } catch (err) {
-            setError('Failed to load tickets');
+            setError(err instanceof Error ? err.message : 'Failed to load tickets');
             console.error(err);
         } finally {
             setLoading(false);
@@ -58,14 +55,8 @@ export function useOptimisticTickets() {
         optimisticUpdateTicket(ticketId, updates);
 
         try {
-            // Perform server update
-            const { error } = await ticketService.updateTicket(ticketId, serverUpdates);
-
-            if (error) {
-                // Revert optimistic update on error
-                await loadTickets();
-                throw error;
-            }
+            // Perform server update; the write seam throws on failure (ADR-0002).
+            await ticketService.updateTicket(ticketId, serverUpdates);
         } catch (err) {
             // Revert optimistic update on error
             await loadTickets();
@@ -80,13 +71,8 @@ export function useOptimisticTickets() {
         optimisticRemoveTicket(ticketId);
 
         try {
-            const { error } = await ticketService.deleteTicket(ticketId);
-
-            if (error) {
-                // Revert optimistic delete on error
-                setTickets(originalTickets);
-                throw error;
-            }
+            // The write seam throws on failure (ADR-0002).
+            await ticketService.deleteTicket(ticketId);
         } catch (err) {
             // Revert optimistic delete on error
             setTickets(originalTickets);

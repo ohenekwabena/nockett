@@ -58,16 +58,12 @@ export default function TicketListTable({
                 bValue = b.status || '';
                 break;
             case 'priority':
-                const aPriority = Array.isArray(a.ticket_priorities) ? a.ticket_priorities[0]?.name : a.ticket_priorities?.name;
-                const bPriority = Array.isArray(b.ticket_priorities) ? b.ticket_priorities[0]?.name : b.ticket_priorities?.name;
-                aValue = aPriority || '';
-                bValue = bPriority || '';
+                aValue = a.ticket_priorities?.name || '';
+                bValue = b.ticket_priorities?.name || '';
                 break;
             case 'assignee':
-                const aAssignee = Array.isArray(a.assignee) ? a.assignee[0]?.name : a.assignee?.name;
-                const bAssignee = Array.isArray(b.assignee) ? b.assignee[0]?.name : b.assignee?.name;
-                aValue = aAssignee || '';
-                bValue = bAssignee || '';
+                aValue = a.assignee?.name || '';
+                bValue = b.assignee?.name || '';
                 break;
             case 'created_at':
                 aValue = new Date(a.created_at || 0).getTime();
@@ -184,13 +180,8 @@ export default function TicketListTable({
                         </thead>
                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800/50">
                             {sortedTickets.map((ticket, index) => {
-                                const priority = Array.isArray(ticket.ticket_priorities)
-                                    ? ticket.ticket_priorities[0]?.name || ""
-                                    : ticket.ticket_priorities?.name || "";
-
-                                const assignee = Array.isArray(ticket.assignee)
-                                    ? ticket.assignee[0] || null
-                                    : ticket.assignee || null;
+                                const priority = ticket.ticket_priorities?.name || "";
+                                const assignee = ticket.assignee || null;
 
                                 const shouldShowHighPriorityFlag = priority?.toUpperCase() === "HIGH";
 
@@ -318,24 +309,14 @@ export default function TicketListTable({
                             ...currentTicket,
                             status: currentTicket.status as "OPEN" | "IN_PROGRESS" | "CLOSED",
                             description: currentTicket.description || "",
-                            priority: (Array.isArray(currentTicket.ticket_priorities)
-                                ? currentTicket.ticket_priorities[0]?.name?.toUpperCase()
-                                : currentTicket.ticket_priorities?.name?.toUpperCase()) as "HIGH" | "LOW" | "MEDIUM" | undefined,
-                            category: (Array.isArray(currentTicket.ticket_categories)
-                                ? currentTicket.ticket_categories[0]?.name?.toUpperCase()
-                                : currentTicket.ticket_categories?.name?.toUpperCase()),
-                            assignee: (() => {
-                                const assignee = Array.isArray(currentTicket.assignee)
-                                    ? currentTicket.assignee[0]
-                                    : currentTicket.assignee;
-                                return assignee ? { id: assignee.id.toString(), name: assignee.name } : undefined;
-                            })(),
-                            creator: (() => {
-                                const creator = Array.isArray(currentTicket.users)
-                                    ? currentTicket.users[0]
-                                    : currentTicket.users;
-                                return creator ? { id: creator.id, name: creator.name } : undefined;
-                            })(),
+                            priority: currentTicket.ticket_priorities?.name?.toUpperCase() as "HIGH" | "LOW" | "MEDIUM" | undefined,
+                            category: currentTicket.ticket_categories?.name?.toUpperCase(),
+                            assignee: currentTicket.assignee
+                                ? { id: currentTicket.assignee.id.toString(), name: currentTicket.assignee.name }
+                                : undefined,
+                            creator: currentTicket.users
+                                ? { id: currentTicket.users.id, name: currentTicket.users.name }
+                                : undefined,
                             createdAt: currentTicket.created_at ? new Date(currentTicket.created_at) : undefined,
                             updatedAt: currentTicket.updated_at ? new Date(currentTicket.updated_at) : undefined,
                         };
