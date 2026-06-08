@@ -18,6 +18,7 @@ import {
   type DetectionSource,
   type TrafficImpact,
 } from "@/services/ticket-service";
+import { loadReferenceOptions, submitTicket, validateTicketDraft } from "@/lib/ticket-intake";
 import {
   PRIORITY_ICONS,
   STATUS_ICONS,
@@ -160,45 +161,61 @@ export default function CreateTicketModal({
 
   const loadDropdownData = async () => {
     try {
-      const [
-        categories,
-        priorities,
-        assignees,
-        demarcations,
-        links,
-        sites,
-        serviceTypes,
-        detectionSources,
-        trafficImpacts,
-      ] = await Promise.all([
-        ticketService.getTicketCategories(),
-        ticketService.getTicketPriorities(),
-        ticketService.getAssignees(),
-        ticketService.getDemarcations(),
-        ticketService.getLinks(),
-        ticketService.getSites(),
-        ticketService.getServiceTypes(),
-        ticketService.getDetectionSources(),
-        ticketService.getTrafficImpacts(),
-      ]);
-
-      setCategories(categories);
-      setPriorities(priorities);
-      setAssignees(assignees);
-      setDemarcations(demarcations);
-      setLinks(links);
-      setSites(sites);
-      setServiceTypes(serviceTypes);
-      setDetectionSources(detectionSources);
-      setTrafficImpacts(trafficImpacts);
+      const options = await loadReferenceOptions();
+      setCategories(options.categories);
+      setPriorities(options.priorities);
+      setAssignees(options.assignees);
+      setDemarcations(options.demarcations);
+      setLinks(options.links);
+      setSites(options.sites);
+      setServiceTypes(options.serviceTypes);
+      setDetectionSources(options.detectionSources);
+      setTrafficImpacts(options.trafficImpacts);
     } catch (err) {
       console.error("Error loading dropdown data:", err);
     }
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      setError("Title is required");
+    const priorityObj = priorities.find((p) => p.name.toUpperCase() === priority);
+    const categoryObj = categories.find((c) => c.name.toUpperCase() === category);
+
+    const ticketData = {
+      title: title.trim(),
+      description: description.trim(),
+      status,
+      priority_id: priorityObj?.id,
+      category_id: categoryObj?.id,
+      assignee_id: assigneeId && assigneeId !== "unassigned" ? parseInt(assigneeId) : undefined,
+      creator_id: user?.id,
+      incidentDate: incidentDate || undefined,
+      issueStart: issueStart === "Yes",
+      detectionTime: detectionTime || undefined,
+      escalationTime: escalationTime || undefined,
+      providerNotifiedTime: providerNotifiedTime || undefined,
+      issueCleared: issueCleared === "Yes",
+      restorationTimeConfirmed: restorationTimeConfirmed || undefined,
+      grossDowntimeMin: grossDowntimeMin ? parseInt(grossDowntimeMin) : undefined,
+      providerDowntimeMin: providerDowntimeMin ? parseInt(providerDowntimeMin) : undefined,
+      rootCauseLev1: rootCauseLev1.trim() || undefined,
+      rootCauseLev2: rootCauseLev2.trim() || undefined,
+      slaImpacted: slaImpacted === "Yes",
+      redundancyAvailable: redundancyAvailable === "Yes",
+      partnerImpacted: partnerImpacted === "Yes",
+      rfoReceived: rfoReceived === "Yes",
+      preventiveAction: preventiveAction.trim() || undefined,
+      demarcation: demarcation || undefined,
+      linkName: linkName || undefined,
+      siteId: siteId || undefined,
+      serviceType: serviceType || undefined,
+      detectionSource: detectionSource || undefined,
+      trafficImpact: trafficImpact || undefined,
+    };
+
+    // Intake rules (title required) live in the module, not inline here.
+    const validationError = validateTicketDraft(ticketData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -211,57 +228,18 @@ export default function CreateTicketModal({
     setError(null);
 
     try {
-      const priorityObj = priorities.find((p) => p.name.toUpperCase() === priority);
-      const categoryObj = categories.find((c) => c.name.toUpperCase() === category);
-
-      const ticketData = {
-        title: title.trim(),
-        description: description.trim(),
-        status,
-        priority_id: priorityObj?.id,
-        category_id: categoryObj?.id,
-        assignee_id: assigneeId && assigneeId !== "unassigned" ? parseInt(assigneeId) : undefined,
-        creator_id: user?.id,
-        incidentDate: incidentDate || undefined,
-        issueStart: issueStart === "Yes",
-        detectionTime: detectionTime || undefined,
-        escalationTime: escalationTime || undefined,
-        providerNotifiedTime: providerNotifiedTime || undefined,
-        issueCleared: issueCleared === "Yes",
-        restorationTimeConfirmed: restorationTimeConfirmed || undefined,
-        grossDowntimeMin: grossDowntimeMin ? parseInt(grossDowntimeMin) : undefined,
-        providerDowntimeMin: providerDowntimeMin ? parseInt(providerDowntimeMin) : undefined,
-        rootCauseLev1: rootCauseLev1.trim() || undefined,
-        rootCauseLev2: rootCauseLev2.trim() || undefined,
-        slaImpacted: slaImpacted === "Yes",
-        redundancyAvailable: redundancyAvailable === "Yes",
-        partnerImpacted: partnerImpacted === "Yes",
-        rfoReceived: rfoReceived === "Yes",
-        preventiveAction: preventiveAction.trim() || undefined,
-        demarcation: demarcation || undefined,
-        linkName: linkName || undefined,
-        siteId: siteId || undefined,
-        serviceType: serviceType || undefined,
-        detectionSource: detectionSource || undefined,
-        trafficImpact: trafficImpact || undefined,
-      };
-
       if (mode === "create") {
-        // The write seam returns the created ticket and throws on failure (ADR-0002).
-        const created = await ticketService.createTicket(ticketData);
+        // Intake owns create -> note -> attachments; note/attachment failures
+        // come back as warnings (the ticket still exists) rather than throwing.
+        const result = await submitTicket({
+          fields: ticketData,
+          initialNote,
+          attachments: pendingFiles,
+          actorId: user?.id,
+        });
 
-        // If there's an initial note, add it
-        if (initialNote.trim()) {
-          await ticketService.createTicketNote({
-            ticket_id: created.id,
-            content: initialNote.trim(),
-            user_id: user?.id,
-          });
-        }
-
-        // Upload pending attachments
-        if (pendingFiles.length > 0) {
-          await Promise.all(pendingFiles.map((file) => ticketService.uploadAttachment(created.id, file, user?.id)));
+        if (result.warnings.length > 0) {
+          console.warn("Ticket created with warnings:", result.warnings);
         }
       } else {
         await ticketService.updateTicket(ticket?.id || "", ticketData);
