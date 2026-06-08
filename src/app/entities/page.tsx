@@ -1,13 +1,7 @@
-import AssigneesCard from "@/components/cards/assignees-card";
-import CategoriesCard from "@/components/cards/categories-card";
-import DepartmentsCard from "@/components/cards/departments-card";
-import PrioritiesCard from "@/components/cards/priorities-card";
-import DemarcationCard from "@/components/cards/demarcation-card";
-import LinkCard from "@/components/cards/link-card";
-import SiteCard from "@/components/cards/site-card";
-import ServiceTypeCard from "@/components/cards/service-type-card";
-import DetectionSourceCard from "@/components/cards/detection-source-card";
-import TrafficImpactCard from "@/components/cards/traffic-impact-card";
+"use client";
+
+import { ReferenceListCard } from "@/components/reference-list/reference-list-card";
+import { referenceDescriptors } from "@/components/reference-list/descriptor";
 
 export default function EntitiesPage() {
   return (
@@ -20,18 +14,11 @@ export default function EntitiesPage() {
       >
         Entities
       </h1>
-      {/* Entities content goes here */}
+      {/* Each reference list is one descriptor entry — see reference-list/descriptor.ts */}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 w-full">
-        <CategoriesCard />
-        <PrioritiesCard />
-        <AssigneesCard />
-        <DepartmentsCard />
-        <DemarcationCard />
-        <LinkCard />
-        <SiteCard />
-        <ServiceTypeCard />
-        <DetectionSourceCard />
-        <TrafficImpactCard />
+        {referenceDescriptors.map((descriptor) => (
+          <ReferenceListCard key={descriptor.key} descriptor={descriptor} />
+        ))}
       </div>
     </div>
   );
