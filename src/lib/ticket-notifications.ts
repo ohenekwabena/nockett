@@ -48,7 +48,7 @@ async function resolveCreator(
 
 async function resolveActorName(supabase: SupabaseClient, assigneeId?: number): Promise<string | undefined> {
   if (!assigneeId) return undefined;
-  const { data } = await supabase.from("assignees").select("name").eq("id", assigneeId).single();
+  const { data } = await supabase.from("assignee").select("name").eq("id", assigneeId).single();
   return data?.name ?? undefined;
 }
 
