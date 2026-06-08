@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { Ticket, ticketService } from "@/services/ticket-service";
+import { loadReferenceOptions } from "@/lib/ticket-intake";
 
 export interface ExportData {
   ticket: Ticket;
@@ -152,29 +153,10 @@ export class ExportService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Tickets Import Template");
 
-    const [
-      categories,
-      priorities,
-      assignees,
-      users,
-      demarcations,
-      links,
-      sites,
-      serviceTypes,
-      detectionSources,
-      trafficImpacts,
-    ] = await Promise.all([
-      ticketService.getTicketCategories(),
-      ticketService.getTicketPriorities(),
-      ticketService.getAssignees(),
-      ticketService.getUsers(),
-      ticketService.getDemarcations(),
-      ticketService.getLinks(),
-      ticketService.getSites(),
-      ticketService.getServiceTypes(),
-      ticketService.getDetectionSources(),
-      ticketService.getTrafficImpacts(),
-    ]);
+    // Share the intake read fold for the reference lists; users is template-only.
+    const [options, users] = await Promise.all([loadReferenceOptions(), ticketService.getUsers()]);
+    const { categories, priorities, assignees, demarcations, links, sites, serviceTypes, detectionSources, trafficImpacts } =
+      options;
 
     this.setupHeaders(worksheet, this.TEMPLATE_COLUMN_HEADERS);
 
