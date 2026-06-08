@@ -156,7 +156,7 @@ export class ExportService {
       categories,
       priorities,
       assignees,
-      { data: users },
+      users,
       demarcations,
       links,
       sites,
@@ -350,16 +350,12 @@ export class ExportService {
       throw new Error("No worksheet found in the uploaded file");
     }
 
-    const [categories, assignees, priorities, { data: users, error: usersError }] = await Promise.all([
+    const [categories, assignees, priorities, users] = await Promise.all([
       ticketService.getTicketCategories(),
       ticketService.getAssignees(),
       ticketService.getTicketPriorities(),
       ticketService.getUsers(),
     ]);
-
-    if (usersError) {
-      throw new Error("Failed to load ticket reference data for import");
-    }
 
     const categoryMap = new Map((categories || []).map((item) => [item.name.toLowerCase(), item.id]));
     const assigneeMap = new Map((assignees || []).map((item) => [item.name.toLowerCase(), item.id]));

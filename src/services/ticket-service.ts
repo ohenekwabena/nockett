@@ -421,31 +421,29 @@ export class TicketService {
 
   // EXPORT METHOD FOR EXCEL
   // Read seam (ADR-0002): returns the enriched export rows and throws on a
-  // data-access error. The sub-resource readers it still leans on (getUsers,
-  // getTicketNotes) remain on the { data, error } envelope until their own
-  // migration, so they are destructured locally below.
+  // data-access error.
   async getTicketsForExport() {
     const tickets = await this.getTickets();
 
-    // Fetch assignees and categories for mapping. The reference-data readers now
-    // throw (ADR-0002); catch each locally so one failed lookup degrades just
-    // that column instead of aborting the whole export (partial export preserved).
+    // Fetch the reference and sub-resource lookups. These readers now throw
+    // (ADR-0002); catch each locally so one failed lookup degrades just that
+    // column instead of aborting the whole export (partial export preserved).
     const assignees = await this.getAssignees().catch(() => []);
     const categories = await this.getTicketCategories().catch(() => []);
     const priorities = await this.getTicketPriorities().catch(() => []);
-    const { data: users } = await this.getUsers();
+    const users = await this.getUsers().catch(() => []);
 
     // Create maps for quick lookup
     const assigneeMap = new Map(assignees.map((a) => [a.id, a.name]));
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
     const priorityMap = new Map(priorities.map((p) => [p.id, p.name]));
-    const userMap = new Map((users || []).map((u) => [u.id, u.name]));
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
 
     // Get all notes for all tickets
     const ticketNotes = new Map<string, string>();
     for (const ticket of tickets) {
-      const { data: notes } = await this.getTicketNotes(ticket.id);
-      if (notes && notes.length > 0) {
+      const notes = await this.getTicketNotes(ticket.id).catch(() => []);
+      if (notes.length > 0) {
         ticketNotes.set(ticket.id, notes.map((n) => n.content).join("\n"));
       }
     }
@@ -516,16 +514,19 @@ export class TicketService {
   }
 
   // TICKET COMMENTS CRUD
-  async createTicketComment(comment: Omit<TicketComment, "id" | "created_at">) {
-    const { data, error } = await this.supabase.from("ticket_comments").insert(comment).select().single();
-    return { data, error };
+  async createTicketComment(comment: Omit<TicketComment, "id" | "created_at">): Promise<TicketComment> {
+    return this.unwrap(
+      await this.supabase.from("ticket_comments").insert(comment).select().single(),
+      "createTicketComment",
+    );
   }
 
-  async getTicketComments(ticketId: string) {
-    const { data, error } = await this.supabase
-      .from("ticket_comments")
-      .select(
-        `
+  async getTicketComments(ticketId: string): Promise<TicketComment[]> {
+    return this.unwrapList(
+      await this.supabase
+        .from("ticket_comments")
+        .select(
+          `
       id,
       ticket_id,
       user_id,
@@ -536,33 +537,35 @@ export class TicketService {
         image_url
       )
     `,
-      )
-      .eq("ticket_id", ticketId)
-      .order("created_at", { ascending: true });
-    return { data, error };
+        )
+        .eq("ticket_id", ticketId)
+        .order("created_at", { ascending: true }),
+      "getTicketComments",
+    );
   }
 
-  async updateTicketComment(id: number, updates: Partial<TicketComment>) {
-    const { data, error } = await this.supabase.from("ticket_comments").update(updates).eq("id", id).select().single();
-    return { data, error };
+  async updateTicketComment(id: number, updates: Partial<TicketComment>): Promise<TicketComment> {
+    return this.unwrap(
+      await this.supabase.from("ticket_comments").update(updates).eq("id", id).select().single(),
+      "updateTicketComment",
+    );
   }
 
-  async deleteTicketComment(id: number) {
-    const { data, error } = await this.supabase.from("ticket_comments").delete().eq("id", id);
-    return { data, error };
+  async deleteTicketComment(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("ticket_comments").delete().eq("id", id), "deleteTicketComment");
   }
 
   // TICKET NOTES CRUD
-  async createTicketNote(note: Omit<TicketNote, "id" | "created_at">) {
-    const { data, error } = await this.supabase.from("ticket_notes").insert(note).select().single();
-    return { data, error };
+  async createTicketNote(note: Omit<TicketNote, "id" | "created_at">): Promise<TicketNote> {
+    return this.unwrap(await this.supabase.from("ticket_notes").insert(note).select().single(), "createTicketNote");
   }
 
-  async getTicketNotes(ticketId: string) {
-    const { data, error } = await this.supabase
-      .from("ticket_notes")
-      .select(
-        `
+  async getTicketNotes(ticketId: string): Promise<TicketNote[]> {
+    return this.unwrapList(
+      await this.supabase
+        .from("ticket_notes")
+        .select(
+          `
         id,
         ticket_id,
         user_id,
@@ -574,43 +577,50 @@ export class TicketService {
           email
         )
       `,
-      )
-      .eq("ticket_id", ticketId)
-      .order("created_at", { ascending: true });
-    return { data, error };
+        )
+        .eq("ticket_id", ticketId)
+        .order("created_at", { ascending: true }),
+      "getTicketNotes",
+    );
   }
 
-  async updateTicketNote(id: number, updates: Partial<TicketNote>) {
-    const { data, error } = await this.supabase.from("ticket_notes").update(updates).eq("id", id).select().single();
-    return { data, error };
+  async updateTicketNote(id: number, updates: Partial<TicketNote>): Promise<TicketNote> {
+    return this.unwrap(
+      await this.supabase.from("ticket_notes").update(updates).eq("id", id).select().single(),
+      "updateTicketNote",
+    );
   }
 
-  async deleteTicketNote(id: number) {
-    const { data, error } = await this.supabase.from("ticket_notes").delete().eq("id", id);
-    return { data, error };
+  async deleteTicketNote(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("ticket_notes").delete().eq("id", id), "deleteTicketNote");
   }
 
   // TICKET ATTACHMENTS CRUD
-  async createTicketAttachment(attachment: Omit<TicketAttachment, "id" | "created_at">) {
-    const { data, error } = await this.supabase.from("ticket_attachments").insert(attachment).select().single();
-    return { data, error };
+  async createTicketAttachment(attachment: Omit<TicketAttachment, "id" | "created_at">): Promise<TicketAttachment> {
+    return this.unwrap(
+      await this.supabase.from("ticket_attachments").insert(attachment).select().single(),
+      "createTicketAttachment",
+    );
   }
 
-  async getTicketAttachments(ticketId: string) {
-    const { data, error } = await this.supabase
-      .from("ticket_attachments")
-      .select("*")
-      .eq("ticket_id", ticketId)
-      .order("created_at", { ascending: false });
-    return { data, error };
+  async getTicketAttachments(ticketId: string): Promise<TicketAttachment[]> {
+    return this.unwrapList(
+      await this.supabase
+        .from("ticket_attachments")
+        .select("*")
+        .eq("ticket_id", ticketId)
+        .order("created_at", { ascending: false }),
+      "getTicketAttachments",
+    );
   }
 
-  async deleteTicketAttachment(id: number) {
-    const { data, error } = await this.supabase.from("ticket_attachments").delete().eq("id", id);
-    return { data, error };
+  async deleteTicketAttachment(id: number): Promise<void> {
+    this.unwrap(await this.supabase.from("ticket_attachments").delete().eq("id", id), "deleteTicketAttachment");
   }
 
-  async uploadAttachment(ticketId: string, file: File, uploadedBy?: string) {
+  // Write seam (ADR-0002): uploads the file then records it, returning the
+  // created attachment and throwing on either the storage or the insert error.
+  async uploadAttachment(ticketId: string, file: File, uploadedBy?: string): Promise<TicketAttachment> {
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const filePath = `tickets/${ticketId}/${Date.now()}_${sanitizedName}`;
 
@@ -618,21 +628,23 @@ export class TicketService {
       .from("attachments")
       .upload(filePath, file, { upsert: false });
 
-    if (storageError) return { data: null, error: storageError };
+    if (storageError) throw new Error(`ticketService.uploadAttachment failed: ${storageError.message}`);
 
-    const { data: record, error: dbError } = await this.supabase
-      .from("ticket_attachments")
-      .insert({ ticket_id: ticketId, url: filePath, filename: file.name, uploaded_by: uploadedBy })
-      .select()
-      .single();
-
-    return { data: record, error: dbError };
+    return this.unwrap(
+      await this.supabase
+        .from("ticket_attachments")
+        .insert({ ticket_id: ticketId, url: filePath, filename: file.name, uploaded_by: uploadedBy })
+        .select()
+        .single(),
+      "uploadAttachment",
+    );
   }
 
-  async deleteAttachmentWithFile(id: number, filePath: string) {
+  // Best-effort storage cleanup (its failure is non-fatal), then the row delete
+  // throws on error like the rest of the write seam (ADR-0002).
+  async deleteAttachmentWithFile(id: number, filePath: string): Promise<void> {
     await this.supabase.storage.from("attachments").remove([filePath]);
-    const { data, error } = await this.supabase.from("ticket_attachments").delete().eq("id", id);
-    return { data, error };
+    this.unwrap(await this.supabase.from("ticket_attachments").delete().eq("id", id), "deleteAttachmentWithFile");
   }
 
   getAttachmentPublicUrl(filePath: string) {
@@ -727,9 +739,8 @@ export class TicketService {
     return { data, error };
   }
 
-  async getUsers() {
-    const { data, error } = await this.supabase.from("users").select("*").order("name");
-    return { data, error };
+  async getUsers(): Promise<User[]> {
+    return this.unwrapList(await this.supabase.from("users").select("*").order("name"), "getUsers");
   }
 
   async getUserById(id: string) {

@@ -292,13 +292,13 @@ export default function TicketModal({
     if (!ticket.id) return;
 
     try {
-      const [commentsRes, notesRes] = await Promise.all([
+      const [comments, notes] = await Promise.all([
         ticketService.getTicketComments(ticket.id),
         ticketService.getTicketNotes(ticket.id),
       ]);
 
-      if (commentsRes.data) setComments(commentsRes.data);
-      if (notesRes.data) setNotes(notesRes.data);
+      setComments(comments);
+      setNotes(notes);
     } catch (err) {
       console.error("Error loading comments and notes:", err);
     }
@@ -307,8 +307,7 @@ export default function TicketModal({
   const loadAttachments = async () => {
     if (!ticket.id) return;
     try {
-      const { data } = await ticketService.getTicketAttachments(ticket.id);
-      if (data) setAttachments(data as TicketAttachment[]);
+      setAttachments(await ticketService.getTicketAttachments(ticket.id));
     } catch (err) {
       console.error("Error loading attachments:", err);
     }
@@ -319,19 +318,14 @@ export default function TicketModal({
 
     setLoading(true);
     try {
-      // Try to create comment with user_id first
-      const result = await ticketService.createTicketComment({
+      await ticketService.createTicketComment({
         ticket_id: ticket.id,
         content: newComment.trim(),
         user_id: user?.id,
       });
 
-      if (!result.error) {
-        setNewComment("");
-        await loadCommentsAndNotes();
-      } else {
-        console.error("Error adding comment:", result.error);
-      }
+      setNewComment("");
+      await loadCommentsAndNotes();
     } catch (err) {
       console.error("Error adding comment:", err);
     } finally {
@@ -344,19 +338,14 @@ export default function TicketModal({
 
     setLoading(true);
     try {
-      // Try to create note with user_id first
-      const result = await ticketService.createTicketNote({
+      await ticketService.createTicketNote({
         ticket_id: ticket.id,
         content: newNote.trim(),
         user_id: user?.id,
       });
 
-      if (!result.error) {
-        setNewNote("");
-        await loadCommentsAndNotes();
-      } else {
-        console.error("Error adding note:", result.error);
-      }
+      setNewNote("");
+      await loadCommentsAndNotes();
     } catch (err) {
       console.error("Error adding note:", err);
     } finally {
@@ -367,14 +356,12 @@ export default function TicketModal({
   const handleDeleteComment = async (commentId: number) => {
     setLoading(true);
     try {
-      const { error } = await ticketService.deleteTicketComment(commentId);
-      if (!error) {
-        await loadCommentsAndNotes();
-        // Add 1000ms delay before closing dialog
-        setTimeout(() => {
-          setCommentToDelete(null);
-        }, 1000);
-      }
+      await ticketService.deleteTicketComment(commentId);
+      await loadCommentsAndNotes();
+      // Add 1000ms delay before closing dialog
+      setTimeout(() => {
+        setCommentToDelete(null);
+      }, 1000);
     } catch (err) {
       console.error("Error deleting comment:", err);
     } finally {
@@ -385,14 +372,12 @@ export default function TicketModal({
   const handleDeleteNote = async (noteId: number) => {
     setLoading(true);
     try {
-      const { error } = await ticketService.deleteTicketNote(noteId);
-      if (!error) {
-        await loadCommentsAndNotes();
-        // Add 1000ms delay before closing dialog
-        setTimeout(() => {
-          setNoteToDelete(null);
-        }, 1000);
-      }
+      await ticketService.deleteTicketNote(noteId);
+      await loadCommentsAndNotes();
+      // Add 1000ms delay before closing dialog
+      setTimeout(() => {
+        setNoteToDelete(null);
+      }, 1000);
     } catch (err) {
       console.error("Error deleting note:", err);
     } finally {
@@ -1775,9 +1760,14 @@ export default function TicketModal({
                       if (!ticket.id) return;
                       const files = Array.from(e.dataTransfer.files);
                       setAttachmentLoading(true);
-                      await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
-                      await loadAttachments();
-                      setAttachmentLoading(false);
+                      try {
+                        await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
+                        await loadAttachments();
+                      } catch (err) {
+                        console.error("Error uploading attachments:", err);
+                      } finally {
+                        setAttachmentLoading(false);
+                      }
                     }}
                   >
                     <input
@@ -1791,9 +1781,14 @@ export default function TicketModal({
                         const files = Array.from(e.target.files);
                         e.target.value = "";
                         setAttachmentLoading(true);
-                        await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
-                        await loadAttachments();
-                        setAttachmentLoading(false);
+                        try {
+                          await Promise.all(files.map((f) => ticketService.uploadAttachment(ticket.id!, f, user?.id)));
+                          await loadAttachments();
+                        } catch (err) {
+                          console.error("Error uploading attachments:", err);
+                        } finally {
+                          setAttachmentLoading(false);
+                        }
                       }}
                     />
                     {attachmentLoading ? (
@@ -1888,10 +1883,15 @@ export default function TicketModal({
                                     <AlertDialogAction
                                       onClick={async () => {
                                         setAttachmentLoading(true);
-                                        await ticketService.deleteAttachmentWithFile(att.id, att.url);
-                                        setAttachmentToDelete(null);
-                                        await loadAttachments();
-                                        setAttachmentLoading(false);
+                                        try {
+                                          await ticketService.deleteAttachmentWithFile(att.id, att.url);
+                                          setAttachmentToDelete(null);
+                                          await loadAttachments();
+                                        } catch (err) {
+                                          console.error("Error deleting attachment:", err);
+                                        } finally {
+                                          setAttachmentLoading(false);
+                                        }
                                       }}
                                       disabled={attachmentLoading}
                                       className="bg-red-600 hover:bg-red-700 text-white"
