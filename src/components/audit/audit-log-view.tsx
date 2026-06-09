@@ -1,13 +1,23 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { listEvents, type AuditCursor, type AuditEvent } from "@/lib/audit-service";
 import { groupEventsByTxid } from "@/lib/audit-grouping";
+import { AuditFilterBar } from "@/components/audit/audit-filter-bar";
+import {
+  EMPTY_AUDIT_FILTERS,
+  hasActiveFilters,
+  toServiceFilters,
+  type AuditActor,
+  type AuditFilterState,
+} from "@/lib/audit-filters";
 
 interface AuditLogViewProps {
   initialEvents: AuditEvent[];
   initialCursor: AuditCursor | null;
   pageSize: number;
+  /** Actors for the filter dropdown (all Users; reuses the app's users read). */
+  actors: AuditActor[];
 }
 
 const ACTION_BADGE: Record<string, string> = {
@@ -80,15 +90,25 @@ function EntityLabel({ event }: { event: AuditEvent }) {
  * cascade in the same transaction) shares one txid, so the feed is collapsed
  * into per-txid groups: a multi-row group shows its parent with a "+N related
  * rows" disclosure that expands to reveal the child Audit Events (AUDIT-2).
+ *
+ * The filter bar (AUDIT-3) narrows by date range, actor, entity type, and
+ * action. Any change re-queries page one through the same keyset seam, so the
+ * active filters govern both the results and every subsequent "Load more".
  */
-export function AuditLogView({ initialEvents, initialCursor, pageSize }: AuditLogViewProps) {
+export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }: AuditLogViewProps) {
   const [events, setEvents] = useState<AuditEvent[]>(initialEvents);
   const [cursor, setCursor] = useState<AuditCursor | null>(initialCursor);
+  const [filters, setFilters] = useState<AuditFilterState>(EMPTY_AUDIT_FILTERS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
+  // Monotonic id stamped on every fetch: a slower earlier response (e.g. the user
+  // re-filters mid-load) is discarded so only the newest query wins the state.
+  const requestRef = useRef(0);
+
   const groups = useMemo(() => groupEventsByTxid(events), [events]);
+  const filtered = hasActiveFilters(filters);
 
   const toggle = (key: number) =>
     setExpanded((previous) => {
@@ -98,18 +118,45 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize }: AuditLo
       return next;
     });
 
-  const loadMore = async () => {
-    if (!cursor || loading) return;
+  // Re-query the first (newest) page under a new filter set. Resets the feed and
+  // cursor, so pagination continues within the active filters.
+  const applyFilters = async (next: AuditFilterState) => {
+    const requestId = ++requestRef.current;
+    setFilters(next);
     setLoading(true);
     setError(null);
     try {
-      const result = await listEvents({ limit: pageSize, cursor });
+      const result = await listEvents({ limit: pageSize, filters: toServiceFilters(next) });
+      if (requestRef.current !== requestId) return; // superseded by a newer query
+      setEvents(result.events);
+      setCursor(result.nextCursor);
+      setExpanded(new Set());
+    } catch (err) {
+      if (requestRef.current !== requestId) return;
+      setError(err instanceof Error ? err.message : "Failed to filter Audit Events");
+    } finally {
+      if (requestRef.current === requestId) setLoading(false);
+    }
+  };
+
+  const resetFilters = () => applyFilters(EMPTY_AUDIT_FILTERS);
+
+  const loadMore = async () => {
+    if (!cursor || loading) return;
+    const requestId = ++requestRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      // Carry the active filters so older pages stay within the same slice.
+      const result = await listEvents({ limit: pageSize, cursor, filters: toServiceFilters(filters) });
+      if (requestRef.current !== requestId) return; // a filter change superseded this page
       setEvents((previous) => [...previous, ...result.events]);
       setCursor(result.nextCursor);
     } catch (err) {
+      if (requestRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : "Failed to load more Audit Events");
     } finally {
-      setLoading(false);
+      if (requestRef.current === requestId) setLoading(false);
     }
   };
 
@@ -124,15 +171,37 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize }: AuditLo
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           {events.length} Audit Event{events.length === 1 ? "" : "s"} shown, newest first
+          {filtered ? " · filtered" : ""}
         </p>
       </div>
 
+      <AuditFilterBar
+        filters={filters}
+        actors={actors}
+        disabled={loading}
+        onChange={applyFilters}
+        onReset={resetFilters}
+      />
+
       {events.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400 mb-2">No Audit Events yet</p>
-          <p className="text-gray-500 dark:text-gray-500 text-sm">
-            Changes across the app will appear here as they happen.
-          </p>
+          {filtered ? (
+            <>
+              <p className="text-gray-600 dark:text-gray-400 mb-2">
+                No Audit Events match these filters
+              </p>
+              <p className="text-gray-500 dark:text-gray-500 text-sm">
+                Try widening the date range or clearing a filter.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-600 dark:text-gray-400 mb-2">No Audit Events yet</p>
+              <p className="text-gray-500 dark:text-gray-500 text-sm">
+                Changes across the app will appear here as they happen.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
