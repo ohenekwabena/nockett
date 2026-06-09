@@ -14,8 +14,20 @@ import type { Tables } from "@/types/database.types";
  * result rather than an error.
  */
 
-/** One row of the Audit Log. */
-export type AuditEvent = Tables<"audit_log">;
+/**
+ * One row of the Audit Log. Excludes `changes_fts`, the internal tsvector that
+ * backs full-text search (AUDIT-5, migration 019): it is a search artifact, not
+ * domain data, so the read seam neither selects it nor exposes it to callers.
+ */
+export type AuditEvent = Omit<Tables<"audit_log">, "changes_fts">;
+
+/**
+ * The Audit Event columns to read — every audit_log column EXCEPT `changes_fts`
+ * (the search vector from migration 019). Selecting these by name keeps the
+ * tsvector off the wire and out of {@link AuditEvent}.
+ */
+const AUDIT_COLUMNS =
+  "id, txid, entity_type, entity_id, action, actor_id, actor_email, actor_name, changes, created_at";
 
 /**
  * Keyset cursor: the (created_at, id) of the last row already seen. The next
@@ -45,6 +57,15 @@ export interface AuditFilters {
   entityType?: string | null;
   /** Exact action: one of {@link AUDIT_ACTIONS}. */
   action?: string | null;
+  /**
+   * Free-text WORD search over the change payload (AUDIT-5). Matched against the
+   * GIN-indexed `changes_fts` tsvector with `websearch_to_tsquery('simple', …)`
+   * (migration 019): "CLOSED" finds every Audit Event whose payload contains that
+   * word, and multi-word / "quoted phrase" / -excluded terms follow web-search
+   * syntax. ANDs with the other predicates and the keyset cursor; trimmed, so an
+   * empty/blank value is no constraint.
+   */
+  search?: string | null;
 }
 
 export interface ListEventsParams {
@@ -120,7 +141,7 @@ export async function listEvents(
 ): Promise<ListEventsResult> {
   let query = client
     .from("audit_log")
-    .select("*")
+    .select(AUDIT_COLUMNS)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit + 1);
@@ -133,6 +154,15 @@ export async function listEvents(
   if (filters?.actorId) query = query.eq("actor_id", filters.actorId);
   if (filters?.entityType) query = query.eq("entity_type", filters.entityType);
   if (filters?.action) query = query.eq("action", filters.action);
+
+  // Full-text search over the change payload (AUDIT-5). websearch_to_tsquery on
+  // the 'simple'-config changes_fts vector hits the GIN index (migration 019);
+  // like the predicates above it ANDs with the keyset cursor. Trim so a blank box
+  // is no constraint (and never an all-matching empty tsquery).
+  const search = filters?.search?.trim();
+  if (search) {
+    query = query.textSearch("changes_fts", search, { type: "websearch", config: "simple" });
+  }
 
   if (cursor) {
     // Strict keyset predicate: created_at < c.created_at OR (=, id < c.id).

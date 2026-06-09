@@ -21,6 +21,7 @@ function makeClient(response: { data: unknown; error: unknown }) {
     eq: [] as Array<[string, unknown]>,
     gte: [] as Array<[string, unknown]>,
     lte: [] as Array<[string, unknown]>,
+    textSearch: [] as Array<[string, string, unknown]>,
   };
   const builder: Record<string, unknown> = {
     select: vi.fn((columns: string) => {
@@ -49,6 +50,10 @@ function makeClient(response: { data: unknown; error: unknown }) {
     }),
     lte: vi.fn((column: string, value: unknown) => {
       calls.lte.push([column, value]);
+      return builder;
+    }),
+    textSearch: vi.fn((column: string, query: string, options: unknown) => {
+      calls.textSearch.push([column, query, options]);
       return builder;
     }),
     then: (resolve: (value: unknown) => void) => resolve(response),
@@ -209,6 +214,62 @@ describe("listEvents", () => {
     // The filter narrows the set...
     expect(calls.eq).toEqual([["entity_type", "tickets"]]);
     // ...and the keyset predicate still walks strictly older — they AND together.
+    expect(calls.or).toEqual([
+      "created_at.lt.2026-06-09T04:00:00Z,and(created_at.eq.2026-06-09T04:00:00Z,id.lt.4)",
+    ]);
+  });
+
+  // AUDIT-5: full-text search over the change payload.
+  it("issues a websearch full-text predicate on changes_fts when search is set", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents({ limit: 2, filters: { search: "CLOSED" } }, client);
+
+    // Matches the changes_fts GIN index (migration 019): the 'simple' config and
+    // websearch type pair with websearch_to_tsquery('simple', …) server-side.
+    expect(calls.textSearch).toEqual([
+      ["changes_fts", "CLOSED", { type: "websearch", config: "simple" }],
+    ]);
+  });
+
+  it("trims the search term before querying", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents({ limit: 2, filters: { search: "  CLOSED  " } }, client);
+
+    expect(calls.textSearch).toEqual([
+      ["changes_fts", "CLOSED", { type: "websearch", config: "simple" }],
+    ]);
+  });
+
+  it("applies no full-text predicate when search is absent, empty, or blank", async () => {
+    for (const search of [undefined, "", "   "]) {
+      const { client, calls } = makeClient({ data: [], error: null });
+      await listEvents({ limit: 2, filters: { search } }, client);
+      expect(calls.textSearch).toEqual([]);
+    }
+  });
+
+  it("composes search with structured filters and the keyset cursor", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents(
+      {
+        limit: 2,
+        cursor: { created_at: "2026-06-09T04:00:00Z", id: 4 },
+        filters: { entityType: "tickets", action: "update", search: "CLOSED" },
+      },
+      client,
+    );
+
+    // Structured filters, full-text search, and the keyset predicate all AND.
+    expect(calls.eq).toEqual([
+      ["entity_type", "tickets"],
+      ["action", "update"],
+    ]);
+    expect(calls.textSearch).toEqual([
+      ["changes_fts", "CLOSED", { type: "websearch", config: "simple" }],
+    ]);
     expect(calls.or).toEqual([
       "created_at.lt.2026-06-09T04:00:00Z,and(created_at.eq.2026-06-09T04:00:00Z,id.lt.4)",
     ]);
