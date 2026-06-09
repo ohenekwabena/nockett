@@ -26,12 +26,20 @@ _Avoid_: "ticket ID" — that names the surrogate `id` (a uuid) and the child-ta
 An operator-managed lookup list used to classify Tickets and Users — Category, Priority, Demarcation, Link, Site, Service Type, Detection Source, Traffic Impact, Assignee, Department. Each is a named record (`{ id, name }` today; the descriptor model allows extra typed fields, implemented on demand).
 _Avoid_: lookup, master data. Note **Role** is NOT a Reference entity — it is the access enum, and the `roles` table was removed.
 
+**Audit Event**:
+An immutable record of one state-changing action in the app — which **User** did what to which entity (a **Ticket**, **User**, invite, **Reference entity**, …), with the relevant detail and a timestamp. Append-only: never updated or deleted once written.
+_Avoid_: history, activity, (bare) log. An **Audit Event** is NOT a `ticket_history` row — `ticket_history` is a separate, currently-dormant per-**Ticket** activity timeline intended for all operators, whereas the **Audit Log** is app-wide and **Admin**-only.
+
+**Audit Log**:
+The append-only collection of **Audit Events**, and the **Admin**-only page that presents it — the oversight surface for who-did-what across the app. Only an **Admin** may read it.
+
 ## Relationships
 
 - A **User** has exactly one **Role** (`user` or `admin`).
 - A **Ticket** has exactly one **Ticket Number** (mandatory); the surrogate `id` uuid is separate and internal.
 - Only an **Admin** may invite a new **User** or delete a **Ticket**.
 - A **Ticket** is classified by **Reference entities** (its Category, Priority, Site, Link, …); a **User** has a Department.
+- A state-changing action by a **User** produces an **Audit Event**; only an **Admin** may read the **Audit Log**.
 
 ## Example dialogue
 
