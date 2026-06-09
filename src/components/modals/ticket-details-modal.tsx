@@ -101,6 +101,32 @@ interface TicketModalProps {
 }
 
 /**
+ * Shape a normalized ticket row (the joined `TicketWithDetails` the list/cards
+ * receive) into the prop object this modal expects: relations collapsed to the
+ * `{id, name}` chips it renders, enum-ish fields upper-cased, timestamps parsed.
+ * Shared by {@link TicketCard} and the /tickets deep-link modal so both open the
+ * modal identically.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapTicketToModalProps(ticket: any): TicketModalProps["ticket"] {
+  const priority: string = ticket.ticket_priorities?.name || "";
+  const category: string = ticket.ticket_categories?.name || "";
+  const assignee = ticket.assignee || null;
+  const creator = ticket.users || null;
+  return {
+    ...ticket,
+    status: ticket.status as TicketModalProps["ticket"]["status"],
+    description: ticket.description || "",
+    priority: (priority ? priority.toUpperCase() : undefined) as TicketModalProps["ticket"]["priority"],
+    category: category ? category.toUpperCase() : undefined,
+    assignee: assignee ? { id: assignee.id?.toString(), name: assignee.name } : undefined,
+    creator: creator ? { id: creator.id, name: creator.name } : undefined,
+    createdAt: ticket.created_at ? new Date(ticket.created_at) : undefined,
+    updatedAt: ticket.updated_at ? new Date(ticket.updated_at) : undefined,
+  };
+}
+
+/**
  * Convert a stored timestamp (an ISO 8601 string with offset, e.g.
  * "2026-01-30T10:41:00+00:00") into the exact shape an
  * <input type="datetime-local"> requires: "YYYY-MM-DDTHH:mm" with no offset.

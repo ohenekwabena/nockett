@@ -2,6 +2,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/services/auth-service";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 function LoginPageContent() {
   const [email, setEmail] = useState("");
@@ -13,6 +14,9 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "true";
+  // Where to land after sign-in: the validated `redirect` target the proxy set
+  // when it bounced an unauthenticated deep link here, else the dashboard.
+  const redirectTo = safeInternalPath(searchParams.get("redirect"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +29,7 @@ function LoginPageContent() {
       if (authError) {
         setError(authError.message);
       } else if (user) {
-        router.push("/dashboard");
+        router.push(redirectTo);
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_) {

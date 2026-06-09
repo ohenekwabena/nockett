@@ -4,7 +4,7 @@ import { Badge } from "../ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { FlagIcon } from "lucide-react";
-import TicketModal from "../modals/ticket-details-modal";
+import TicketModal, { mapTicketToModalProps } from "../modals/ticket-details-modal";
 import PersonEntityAvatar from "../person-entity-avatar";
 import { useState } from "react";
 
@@ -32,10 +32,9 @@ export default function TicketCard({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Joined relations arrive normalized to plain objects from the read seam.
+  // (The full row -> modal-props mapping lives in mapTicketToModalProps.)
   const priority = ticket.ticket_priorities?.name || "";
-  const category = ticket.ticket_categories?.name || "";
   const assignee = ticket.assignee || null;
-  const creator = ticket.users || null;
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent modal from opening when dragging
@@ -101,17 +100,7 @@ export default function TicketCard({
         </CardFooter>
       </Card>
       <TicketModal
-        ticket={{
-          ...ticket,
-          status: ticket.status as "OPEN" | "IN_PROGRESS" | "CLOSED",
-          description: ticket.description || "",
-          priority: priority?.toUpperCase() as "HIGH" | "LOW" | "MEDIUM" | undefined,
-          category: category?.toUpperCase(),
-          assignee: assignee ? { id: assignee.id.toString(), name: assignee.name } : undefined,
-          creator: creator ? { id: creator.id, name: creator.name } : undefined,
-          createdAt: ticket.created_at ? new Date(ticket.created_at) : undefined,
-          updatedAt: ticket.updated_at ? new Date(ticket.updated_at) : undefined,
-        }}
+        ticket={mapTicketToModalProps(ticket)}
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         onTicketUpdated={onTicketUpdated}
