@@ -29,6 +29,8 @@ export interface AuditFilterState {
   entityType: string;
   /** Exact action (insert|update|delete), or "" for any. */
   action: string;
+  /** Free-text search over the change payload (AUDIT-5), or "" for no search. */
+  search: string;
 }
 
 /** The no-constraint state: the full log. */
@@ -38,12 +40,13 @@ export const EMPTY_AUDIT_FILTERS: AuditFilterState = {
   actorId: "",
   entityType: "",
   action: "",
+  search: "",
 };
 
 /** True when any constraint is set — drives the reset affordance and "filtered" label. */
 export function hasActiveFilters(state: AuditFilterState): boolean {
   return Boolean(
-    state.from || state.to || state.actorId || state.entityType || state.action,
+    state.from || state.to || state.actorId || state.entityType || state.action || state.search.trim(),
   );
 }
 
@@ -52,7 +55,8 @@ export function hasActiveFilters(state: AuditFilterState): boolean {
  * inputs are calendar days, so widen each to the instant the seam compares
  * against: `from` to the day's first instant, `to` to its last — that way an
  * inclusive "1 Jun → 9 Jun" range catches every Audit Event on the 9th rather
- * than stopping at its midnight. Empty controls map to null (no constraint).
+ * than stopping at its midnight. Empty controls map to null (no constraint); the
+ * search box is trimmed so trailing whitespace never counts as a query.
  */
 export function toServiceFilters(state: AuditFilterState): AuditFilters {
   return {
@@ -61,6 +65,7 @@ export function toServiceFilters(state: AuditFilterState): AuditFilters {
     actorId: state.actorId || null,
     entityType: state.entityType || null,
     action: state.action || null,
+    search: state.search.trim() || null,
   };
 }
 

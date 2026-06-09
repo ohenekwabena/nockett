@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Select,
   SelectContent,
@@ -31,16 +31,24 @@ interface AuditFilterBarProps {
 }
 
 /**
- * The Audit Log filter bar (AUDIT-3): a date range plus actor / entity-type /
- * action selects, driving the read seam's filters. Purely presentational — it
- * owns no query state; {@link AuditLogView} re-queries page one whenever this
- * reports a change, so the active filters govern results and pagination alike.
+ * The Audit Log filter bar (AUDIT-3, AUDIT-5): a free-text payload search plus a
+ * date range and actor / entity-type / action selects, driving the read seam's
+ * filters. Purely presentational — it owns no query state (the search box keeps
+ * only an uncommitted draft); {@link AuditLogView} re-queries page one whenever
+ * this reports a change, so the active filters govern results and pagination
+ * alike, and search composes with the structured filters.
  */
 export function AuditFilterBar({ filters, actors, disabled, onChange, onReset }: AuditFilterBarProps) {
   const set = (patch: Partial<AuditFilterState>) => onChange({ ...filters, ...patch });
 
   return (
     <div className="mb-6 flex flex-wrap items-end gap-3">
+      <PayloadSearch
+        value={filters.search}
+        disabled={disabled}
+        onSearch={(search) => set({ search })}
+      />
+
       <Field label="From">
         <input
           type="date"
@@ -119,6 +127,53 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
       {children}
     </label>
+  );
+}
+
+/**
+ * The free-text payload search (AUDIT-5). Unlike the selects, a text box would
+ * thrash the read seam on every keystroke, so it holds only a local draft and
+ * commits the query on submit — Enter or the Search button. The draft re-syncs
+ * when the committed `value` changes from outside (e.g. Reset clears the box).
+ */
+function PayloadSearch({
+  value,
+  disabled,
+  onSearch,
+}: {
+  value: string;
+  disabled?: boolean;
+  onSearch: (query: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSearch(draft.trim());
+      }}
+      className="flex items-end gap-2"
+    >
+      <Field label="Search payload">
+        <input
+          type="search"
+          value={draft}
+          placeholder="e.g. CLOSED"
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          className={`${INPUT_CLASS} w-56`}
+        />
+      </Field>
+      <button
+        type="submit"
+        disabled={disabled}
+        className="h-10 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        Search
+      </button>
+    </form>
   );
 }
 
