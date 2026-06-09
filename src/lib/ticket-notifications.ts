@@ -82,7 +82,14 @@ async function sendTicketEmail(
   payload: TicketEmailPayload,
   bcc?: string[],
 ): Promise<NotificationResult> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
+  // This module runs in the browser (ticketService uses the browser Supabase
+  // client), so a relative URL keeps the request same-origin and always hits the
+  // host the app is actually served from. Prefixing an absolute NEXT_PUBLIC_BASE_URL
+  // forced a cross-origin request to the configured host; when that host 307-redirects
+  // (e.g. www -> apex) the CORS preflight fails and every notification email is
+  // silently dropped. Fall back to the absolute base URL only server-side (no window),
+  // where relative URLs don't resolve.
+  const baseUrl = typeof window === "undefined" ? process.env.NEXT_PUBLIC_BASE_URL || "" : "";
   try {
     const res = await fetch(`${baseUrl}/api/email/ticket`, {
       method: "POST",
