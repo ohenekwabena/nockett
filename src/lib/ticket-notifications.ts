@@ -8,9 +8,10 @@ import type { TicketClosedEmailProps } from "@/emails/TicketClosedEmail";
  * Ticket notification policy.
  *
  * This module is the single owner of "a ticket changed -> who gets told, with
- * which template". It resolves the recipient, picks the template + subject, and
- * reports success/failure explicitly via {@link NotificationResult} instead of
- * letting failures fall on the floor.
+ * which template". It resolves recipients (the creator for a brand-new ticket;
+ * the shared support inbox with every workspace user in BCC for a status change),
+ * picks the template + subject, and reports success/failure explicitly via
+ * {@link NotificationResult} instead of letting failures fall on the floor.
  *
  * Layering: this policy module sits above the `/api/email/ticket` route, which
  * is the transport boundary that keeps `RESEND_API_KEY` server-side; the
@@ -21,6 +22,9 @@ import type { TicketClosedEmailProps } from "@/emails/TicketClosedEmail";
 
 const FALLBACK_RECIPIENT = "admin@yourdomain.com";
 
+/** Status-change notifications are addressed here, with every user in BCC. */
+const SUPPORT_INBOX = "support@afriwavetelecom.com";
+
 export type NotificationResult = { ok: true; messageId?: string } | { ok: false; error: string };
 
 /** The minimal ticket shape the notification policy needs. */
@@ -29,7 +33,6 @@ export interface NotifiableTicket {
   description?: string;
   status: string;
   creator_id?: string;
-  assignee_id?: number;
 }
 
 type TicketEmailPayload =
@@ -46,20 +49,45 @@ async function resolveCreator(
   return { email: data?.email || FALLBACK_RECIPIENT, name: data?.name ?? undefined };
 }
 
-async function resolveActorName(supabase: SupabaseClient, assigneeId?: number): Promise<string | undefined> {
-  if (!assigneeId) return undefined;
-  const { data } = await supabase.from("assignee").select("name").eq("id", assigneeId).single();
+/**
+ * Name of the signed-in user performing the change — i.e. whoever clicked save.
+ * Used to label "updated/closed by" in the email. Resolved from the active
+ * session (`auth.getUser()`) joined to their public.users profile, not from the
+ * ticket's assignee. Undefined when there's no session or no profile name.
+ */
+async function resolveActingUserName(supabase: SupabaseClient): Promise<string | undefined> {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) return undefined;
+  const { data } = await supabase.from("users").select("name").eq("id", userId).single();
   return data?.name ?? undefined;
 }
 
+/**
+ * Every workspace user's email, for the BCC list. RLS lets any authenticated
+ * user read public.users (migration 014), so this runs in the acting user's
+ * session. De-duplicated; may be empty (the support inbox is still the TO).
+ */
+async function resolveAllRecipients(supabase: SupabaseClient): Promise<string[]> {
+  const { data } = await supabase.from("users").select("email");
+  return Array.from(
+    new Set((data ?? []).map((row) => row.email).filter((email): email is string => Boolean(email))),
+  );
+}
+
 /** POST the rendered-template request to the server transport and surface the outcome. */
-async function sendTicketEmail(to: string, subject: string, payload: TicketEmailPayload): Promise<NotificationResult> {
+async function sendTicketEmail(
+  to: string,
+  subject: string,
+  payload: TicketEmailPayload,
+  bcc?: string[],
+): Promise<NotificationResult> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
   try {
     const res = await fetch(`${baseUrl}/api/email/ticket`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, subject, type: payload.type, props: payload.props }),
+      body: JSON.stringify({ to, subject, type: payload.type, props: payload.props, bcc }),
     });
 
     if (!res.ok) {
@@ -96,32 +124,45 @@ export async function notifyTicketCreated(ticket: NotifiableTicket): Promise<Not
 }
 
 /**
- * Notify the ticket's creator that its status changed. Picks the "closed"
- * template when the new status is CLOSED, otherwise the generic "updated" one.
- * `previousStatus` is optional because not every caller knows the prior value.
+ * Notify the workspace that a ticket's status changed: a single email to the
+ * support inbox with every user in BCC. Picks the "closed" template when the new
+ * status is CLOSED, otherwise the generic "updated" one. The change is attributed
+ * to whoever performed it (the signed-in user), and `previousStatus` — when the
+ * caller knows it — drives the "from -> to" transition in the email.
  */
 export async function notifyTicketStatusChanged(
   ticket: NotifiableTicket,
   previousStatus?: string,
 ): Promise<NotificationResult> {
   const supabase = createClient();
-  const creator = await resolveCreator(supabase, ticket.creator_id);
-  const actorName = await resolveActorName(supabase, ticket.assignee_id);
+  const [recipients, updaterName] = await Promise.all([
+    resolveAllRecipients(supabase),
+    resolveActingUserName(supabase),
+  ]);
+  // The support inbox is the visible TO; don't also list it in BCC.
+  const bcc = recipients.filter((email) => email !== SUPPORT_INBOX);
 
   if (ticket.status === "CLOSED") {
-    return sendTicketEmail(creator.email, `Ticket Closed: ${ticket.title}`, {
-      type: "ticket-closed",
-      props: { title: ticket.title, closerName: actorName },
-    });
+    return sendTicketEmail(
+      SUPPORT_INBOX,
+      `Ticket Closed: ${ticket.title}`,
+      { type: "ticket-closed", props: { title: ticket.title, closerName: updaterName } },
+      bcc,
+    );
   }
 
-  return sendTicketEmail(creator.email, `Ticket Status Updated: ${ticket.title}`, {
-    type: "ticket-updated",
-    props: {
-      title: ticket.title,
-      oldStatus: previousStatus ?? "",
-      newStatus: ticket.status,
-      updaterName: actorName,
+  return sendTicketEmail(
+    SUPPORT_INBOX,
+    `Ticket Status Updated: ${ticket.title}`,
+    {
+      type: "ticket-updated",
+      props: {
+        title: ticket.title,
+        oldStatus: previousStatus ?? "",
+        newStatus: ticket.status,
+        updaterName,
+      },
     },
-  });
+    bcc,
+  );
 }
