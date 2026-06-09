@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { listEvents, type AuditCursor, type AuditEvent } from "@/lib/audit-service";
+import { groupEventsByTxid } from "@/lib/audit-grouping";
 
 interface AuditLogViewProps {
   initialEvents: AuditEvent[];
@@ -29,16 +30,73 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+function ActionBadge({ action }: { action: string | null }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+        ACTION_BADGE[action ?? ""] ?? "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+      }`}
+    >
+      {action ?? "—"}
+    </span>
+  );
+}
+
+function ActorCell({ event }: { event: AuditEvent }) {
+  const primary = event.actor_name || event.actor_email || "System";
+  const secondary = event.actor_name && event.actor_email ? event.actor_email : null;
+  return (
+    <>
+      <span className="text-gray-900 dark:text-gray-100">{primary}</span>
+      {secondary && (
+        <span className="block text-xs text-gray-500 dark:text-gray-400">{secondary}</span>
+      )}
+    </>
+  );
+}
+
+function EntityLabel({ event }: { event: AuditEvent }) {
+  return (
+    <>
+      <span className="text-gray-900 dark:text-gray-100">{event.entity_type}</span>
+      {event.entity_id && (
+        <span
+          className="block text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[16rem]"
+          title={event.entity_id}
+        >
+          {event.entity_id}
+        </span>
+      )}
+    </>
+  );
+}
+
 /**
  * The Admin-only Audit Log surface. Server-rendered with the first (newest)
  * page; "Load more" walks older Audit Events via the keyset read seam. Capture
  * lands by DB trigger (ADR-0004), so this view never writes — it only reads.
+ *
+ * A cascade burst (e.g. deleting a Ticket, whose comments/notes/attachments
+ * cascade in the same transaction) shares one txid, so the feed is collapsed
+ * into per-txid groups: a multi-row group shows its parent with a "+N related
+ * rows" disclosure that expands to reveal the child Audit Events (AUDIT-2).
  */
 export function AuditLogView({ initialEvents, initialCursor, pageSize }: AuditLogViewProps) {
   const [events, setEvents] = useState<AuditEvent[]>(initialEvents);
   const [cursor, setCursor] = useState<AuditCursor | null>(initialCursor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const groups = useMemo(() => groupEventsByTxid(events), [events]);
+
+  const toggle = (key: number) =>
+    setExpanded((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const loadMore = async () => {
     if (!cursor || loading) return;
@@ -73,7 +131,7 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize }: AuditLo
         <div className="text-center py-12">
           <p className="text-gray-600 dark:text-gray-400 mb-2">No Audit Events yet</p>
           <p className="text-gray-500 dark:text-gray-500 text-sm">
-            Changes to Tickets will appear here as they happen.
+            Changes across the app will appear here as they happen.
           </p>
         </div>
       ) : (
@@ -88,48 +146,70 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize }: AuditLo
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => {
-                const actorPrimary = event.actor_name || event.actor_email || "System";
-                const actorSecondary =
-                  event.actor_name && event.actor_email ? event.actor_email : null;
+              {groups.map((group) => {
+                const isGroup = group.related.length > 0;
+                const isOpen = expanded.has(group.key);
                 return (
-                  <tr
-                    key={event.id}
-                    className="border-b border-gray-100 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
-                      {formatTimestamp(event.created_at)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-gray-900 dark:text-gray-100">{actorPrimary}</span>
-                      {actorSecondary && (
-                        <span className="block text-xs text-gray-500 dark:text-gray-400">
-                          {actorSecondary}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          ACTION_BADGE[event.action ?? ""] ??
-                          "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                        }`}
-                      >
-                        {event.action ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-gray-900 dark:text-gray-100">{event.entity_type}</span>
-                      {event.entity_id && (
-                        <span
-                          className="block text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[16rem]"
-                          title={event.entity_id}
+                  <Fragment key={group.key}>
+                    <tr className="border-b border-gray-100 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                        {formatTimestamp(group.primary.created_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <ActorCell event={group.primary} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <ActionBadge action={group.primary.action} />
+                      </td>
+                      <td className="px-4 py-3">
+                        {isGroup ? (
+                          <button
+                            type="button"
+                            onClick={() => toggle(group.key)}
+                            aria-expanded={isOpen}
+                            className="flex items-start gap-2 text-left hover:opacity-80 transition-opacity"
+                          >
+                            <span
+                              aria-hidden
+                              className="mt-0.5 text-gray-400 dark:text-gray-500 select-none"
+                            >
+                              {isOpen ? "▾" : "▸"}
+                            </span>
+                            <span>
+                              <EntityLabel event={group.primary} />
+                              <span className="block text-xs text-blue-600 dark:text-blue-400">
+                                +{group.related.length} related row
+                                {group.related.length === 1 ? "" : "s"}
+                              </span>
+                            </span>
+                          </button>
+                        ) : (
+                          <EntityLabel event={group.primary} />
+                        )}
+                      </td>
+                    </tr>
+                    {isGroup &&
+                      isOpen &&
+                      group.related.map((child) => (
+                        <tr
+                          key={child.id}
+                          className="border-b border-gray-100 dark:border-gray-700/50 last:border-0 bg-gray-50/60 dark:bg-gray-900/20"
                         >
-                          {event.entity_id}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            {formatTimestamp(child.created_at)}
+                          </td>
+                          <td className="px-4 py-2">
+                            <ActorCell event={child} />
+                          </td>
+                          <td className="px-4 py-2">
+                            <ActionBadge action={child.action} />
+                          </td>
+                          <td className="px-4 py-2 pl-10">
+                            <EntityLabel event={child} />
+                          </td>
+                        </tr>
+                      ))}
+                  </Fragment>
                 );
               })}
             </tbody>
