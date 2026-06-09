@@ -13,6 +13,7 @@ import { Kanban, LayoutGrid, List, Download, Upload, FileSpreadsheet } from "luc
 import { Button } from "@/components/ui/button";
 import { ticketService } from "@/services/ticket-service";
 import { ExportService } from "@/lib/export-service";
+import TicketModal, { mapTicketToModalProps } from "@/components/modals/ticket-details-modal";
 import { toast } from "sonner";
 
 export default function TicketsPage() {
@@ -30,6 +31,10 @@ export default function TicketsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   const [strictImportMode, setStrictImportMode] = useState(false);
+  // Deep-link target from an email "View ticket" link (/tickets?ticket=<id>).
+  const [deepLinkKey, setDeepLinkKey] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const ticketsPerPage = 10;
 
@@ -50,6 +55,34 @@ export default function TicketsPage() {
       window.removeEventListener("ticketCreated", handleTicketCreated);
     };
   }, [loadTickets]);
+
+  // Deep link: an email "View ticket" link lands here as /tickets?ticket=<id>.
+  // Capture the param on mount; it's resolved against the loaded list below.
+  useEffect(() => {
+    const key = new URLSearchParams(window.location.search).get("ticket");
+    if (key) setDeepLinkKey(key);
+  }, []);
+
+  // Once the requested ticket is present in the loaded list, open its details
+  // modal and strip the param so a refresh (or closing the modal) won't reopen
+  // it. Matches the human ticket id first, then the row id, both case-insensitive.
+  useEffect(() => {
+    if (!deepLinkKey || tickets.length === 0) return;
+    const lower = deepLinkKey.toLowerCase();
+    const match = tickets.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (t: any) => t.ticket_id?.toLowerCase() === lower || t.id?.toLowerCase() === lower,
+    );
+    if (match) {
+      setSelectedTicket(match);
+    } else {
+      toast.error(`Ticket "${deepLinkKey}" was not found.`);
+    }
+    setDeepLinkKey(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("ticket");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }, [deepLinkKey, tickets]);
 
   // Update filtered tickets when tickets or filters change
   useEffect(() => {
@@ -603,6 +636,22 @@ export default function TicketsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Page-level modal opened by an email deep link (/tickets?ticket=<id>).
+          Driven off the full ticket list, so it works regardless of the current
+          page, tab, search, or filters. */}
+      {selectedTicket && (
+        <TicketModal
+          ticket={mapTicketToModalProps(selectedTicket)}
+          isOpen={Boolean(selectedTicket)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedTicket(null);
+          }}
+          onTicketUpdated={handleTicketUpdated}
+          updateTicketWithOptimism={updateTicketWithOptimism}
+          deleteTicketWithOptimism={deleteTicketWithOptimism}
+        />
+      )}
     </div>
   );
 }

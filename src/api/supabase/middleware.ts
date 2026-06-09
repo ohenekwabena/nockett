@@ -59,9 +59,14 @@ export async function updateSession(request: NextRequest) {
     !pathname.startsWith("/error") &&
     !pathname.startsWith("/api/auth/invite")
   ) {
-    // no user, potentially respond by redirecting the user to the login page
+    // No user: bounce to login, but remember where they were headed (e.g. an
+    // email "View ticket" deep link, /tickets?ticket=NCK-2481) as a `redirect`
+    // param the login page returns to after a successful sign-in.
     const url = request.nextUrl.clone();
+    const target = pathname + request.nextUrl.search;
     url.pathname = "/auth/login";
+    url.search = "";
+    url.searchParams.set("redirect", target);
     return createRedirectResponse(url);
   }
 

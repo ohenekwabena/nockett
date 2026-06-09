@@ -33,6 +33,45 @@ export interface NotifiableTicket {
   description?: string;
   status: string;
   creator_id?: string;
+  /** Row id (uuid) — deep-link fallback when there's no human ticket id. */
+  id?: string;
+  /** Human ticket id (e.g. "NCK-2481") — shown in the email and used to deep link. */
+  ticket_id?: string;
+  /** ISO timestamps used to label the email's activity log. */
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Deep link to a ticket: the in-app /tickets page with a `ticket` query param
+ * the page reads to auto-open that ticket's details modal (surviving a login
+ * round-trip via the proxy's `redirect` param). Same-origin in the browser —
+ * where this module runs — and falls back to NEXT_PUBLIC_BASE_URL server-side.
+ */
+function ticketDeepLink(ticket: NotifiableTicket): string {
+  const origin =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : (process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+  const key = ticket.ticket_id ?? ticket.id ?? "";
+  const path = key ? `/tickets?ticket=${encodeURIComponent(key)}` : "/tickets";
+  return origin ? `${origin}${path}` : path;
+}
+
+/** "Jun 7" — short month + day, for the activity-log "opened" row. Undefined if unparseable. */
+function formatDate(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(d);
+}
+
+/** "2:14 PM" — the change time, for the activity-log primary row. Undefined if unparseable. */
+function formatTime(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(d);
 }
 
 type TicketEmailPayload =
@@ -126,6 +165,10 @@ export async function notifyTicketCreated(ticket: NotifiableTicket): Promise<Not
       description: ticket.description,
       status: ticket.status,
       creatorName: creator.name,
+      ticketId: ticket.ticket_id,
+      ticketUrl: ticketDeepLink(ticket),
+      createdDate: formatDate(ticket.created_at),
+      eventTime: formatTime(ticket.created_at),
     },
   });
 }
@@ -142,18 +185,29 @@ export async function notifyTicketStatusChanged(
   previousStatus?: string,
 ): Promise<NotificationResult> {
   const supabase = createClient();
-  const [recipients, updaterName] = await Promise.all([
+  const [recipients, updaterName, requester] = await Promise.all([
     resolveAllRecipients(supabase),
     resolveActingUserName(supabase),
+    resolveCreator(supabase, ticket.creator_id),
   ]);
   // The support inbox is the visible TO; don't also list it in BCC.
   const bcc = recipients.filter((email) => email !== SUPPORT_INBOX);
+
+  // Shared presentation context for the Status Banner email, derived from the
+  // ticket already in hand — no extra reads beyond the requester lookup above.
+  const banner = {
+    ticketId: ticket.ticket_id,
+    ticketUrl: ticketDeepLink(ticket),
+    requesterName: requester.name,
+    createdDate: formatDate(ticket.created_at),
+    eventTime: formatTime(ticket.updated_at),
+  };
 
   if (ticket.status === "CLOSED") {
     return sendTicketEmail(
       SUPPORT_INBOX,
       `Ticket Closed: ${ticket.title}`,
-      { type: "ticket-closed", props: { title: ticket.title, closerName: updaterName } },
+      { type: "ticket-closed", props: { title: ticket.title, closerName: updaterName, oldStatus: previousStatus, ...banner } },
       bcc,
     );
   }
@@ -168,6 +222,7 @@ export async function notifyTicketStatusChanged(
         oldStatus: previousStatus ?? "",
         newStatus: ticket.status,
         updaterName,
+        ...banner,
       },
     },
     bcc,
