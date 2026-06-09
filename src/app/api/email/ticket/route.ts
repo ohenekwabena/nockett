@@ -5,7 +5,7 @@ import { sendEmail, EmailTemplateType } from "@/lib/email-service";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { to, subject, type, props } = body;
+    const { to, subject, type, props, bcc } = body;
 
     // Validate required fields
     if (!to || !subject || !type || !props) {
@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       to,
       subject,
       template,
+      bcc: Array.isArray(bcc) ? bcc : undefined,
     });
 
     if (result.error) {

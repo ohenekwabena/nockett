@@ -368,6 +368,15 @@ export class TicketService {
 
   async updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket> {
     const snakeCaseUpdates = this.toSnakeCase(updates);
+
+    // Capture the prior status before the write so the status-change email can
+    // show the "from -> to" transition. Only needed when the update touches status.
+    let previousStatus: string | undefined;
+    if (typeof updates.status !== "undefined") {
+      const { data: prior } = await this.supabase.from("tickets").select("status").eq("id", id).single();
+      previousStatus = prior?.status ?? undefined;
+    }
+
     // Transform response back to camelCase
     const updatedTicket = this.transformTicket(
       this.unwrap(
@@ -381,9 +390,11 @@ export class TicketService {
       ),
     );
 
-    // Notify the creator on status change; failures are logged, not swallowed.
-    if (typeof updates.status !== "undefined") {
-      const notification = await notifyTicketStatusChanged(updatedTicket);
+    // Notify every user when the status actually changes; failures are logged,
+    // not swallowed, and never block the update. Skip no-op saves that re-submit
+    // the same status so we don't email the whole workspace for nothing.
+    if (typeof updates.status !== "undefined" && updatedTicket.status !== previousStatus) {
+      const notification = await notifyTicketStatusChanged(updatedTicket, previousStatus);
       if (!notification.ok) {
         console.error("Failed to send ticket update email:", notification.error);
       }

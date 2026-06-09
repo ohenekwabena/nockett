@@ -58,7 +58,7 @@ export default function TicketCard({
         className="w-full cursor-pointer bg-white dark:bg-gray-800 drop-shadow-xl transition-drop-shadow drop-shadow-gray-200 dark:drop-shadow-gray-900 rounded-2xl hover:scale-[1.01] transition-all will-change-transform transform-gpu border border-transparent flex flex-col h-full"
       >
         <CardHeader className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex-row items-start justify-between">
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0 break-words">
             <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
               {ticket.ticket_id || `#${ticket.id?.slice(-8) || "N/A"}`}
             </span>

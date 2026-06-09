@@ -6,7 +6,7 @@ import { TicketClosedEmail, TicketClosedEmailProps } from "../emails/TicketClose
 
 // Email configuration
 const FROM_EMAIL = process.env.EMAIL_FROM || "Nockett <tickets@notifications.nockett.com>";
-const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || "support@nockett.com";
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || "support@afriwavetelecom.com";
 
 // Singleton Resend client
 let resend: Resend | undefined;
@@ -60,11 +60,13 @@ export async function sendEmail({
   subject,
   html,
   template,
+  bcc,
 }: {
   to: string;
   subject: string;
   html?: string;
   template?: EmailTemplateType;
+  bcc?: string[];
 }) {
   try {
     validateEmailConfig();
@@ -76,6 +78,7 @@ export async function sendEmail({
     const { data, error } = await getResendClient().emails.send({
       from: FROM_EMAIL,
       to: [to],
+      ...(bcc && bcc.length > 0 ? { bcc } : {}),
       replyTo: REPLY_TO_EMAIL,
       subject,
       html: emailHtml,
