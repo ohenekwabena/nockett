@@ -299,6 +299,33 @@ export class TicketService {
     );
   }
 
+  /**
+   * Resolve a human Ticket Number (`Ticket#YYYYMMDD###`) to its row uuid
+   * (`tickets.id`), or null when no Ticket carries that number. Powers the Audit
+   * Log entity drill-down (AUDIT-4): an Admin enters a Ticket Number and we need
+   * the uuid the Audit Log stores in `entity_id`.
+   *
+   * NB: the human identifier lives in the `ticket_id` column, NOT `ticket_number`.
+   * ADR-0003 proposed renaming `ticket_id` → `ticket_number`, but that migration
+   * was never applied — both columns still exist, the create path writes the
+   * number into `ticket_id` (see generateNextTicketIds), and `ticket_number` is
+   * the dead column the ADR describes. Uses maybeSingle so "not found" returns
+   * null rather than throwing (unlike getTicketById's single).
+   */
+  async getTicketIdByNumber(ticketNumber: string): Promise<string | null> {
+    const trimmed = ticketNumber.trim();
+    if (!trimmed) return null;
+
+    const { data, error } = await this.supabase
+      .from("tickets")
+      .select("id")
+      .eq("ticket_id", trimmed)
+      .maybeSingle();
+
+    if (error) throw new Error(`ticketService.getTicketIdByNumber failed: ${error.message}`);
+    return data?.id ?? null;
+  }
+
   // Transform camelCase properties to snake_case for database
   private toSnakeCase(updates: Partial<Ticket>): Record<string, any> {
     const snakeCaseMap: Record<string, string> = {

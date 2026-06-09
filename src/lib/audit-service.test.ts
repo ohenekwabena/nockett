@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Every test injects its own client, so this mock just keeps the import safe.
 vi.mock("@/api/supabase/client", () => ({ createClient: () => ({ from: vi.fn() }) }));
 
-import { listEvents, type AuditEvent } from "./audit-service";
+import { getEventsForEntity, listEvents, type AuditEvent } from "./audit-service";
 
 /**
  * A chainable, awaitable PostgREST-builder stub. Chainable methods record their
@@ -212,5 +212,50 @@ describe("listEvents", () => {
     expect(calls.or).toEqual([
       "created_at.lt.2026-06-09T04:00:00Z,and(created_at.eq.2026-06-09T04:00:00Z,id.lt.4)",
     ]);
+  });
+});
+
+describe("getEventsForEntity", () => {
+  it("queries audit_log for one entity, oldest-first (served by the entity index)", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await getEventsForEntity({ entityType: "tickets", entityId: "uuid-1" }, client);
+
+    expect(calls.from).toEqual(["audit_log"]);
+    // Equality on BOTH index columns (entity_type, entity_id) — the index serves it.
+    expect(calls.eq).toEqual([
+      ["entity_type", "tickets"],
+      ["entity_id", "uuid-1"],
+    ]);
+    // Ascending so the trail reads as a timeline; no keyset .or() — a single
+    // entity's trail is returned whole.
+    expect(calls.order).toEqual([
+      ["created_at", { ascending: true }],
+      ["id", { ascending: true }],
+    ]);
+    expect(calls.or).toEqual([]);
+  });
+
+  it("returns the unwrapped events for the entity", async () => {
+    const data = [row(1, "2026-06-09T01:00:00Z"), row(2, "2026-06-09T02:00:00Z")];
+    const { client } = makeClient({ data, error: null });
+
+    const events = await getEventsForEntity({ entityType: "tickets", entityId: "uuid-1" }, client);
+
+    expect(events.map((event) => event.id)).toEqual([1, 2]);
+  });
+
+  it("returns an empty trail when the entity has no Audit Events", async () => {
+    const { client } = makeClient({ data: null, error: null });
+
+    expect(await getEventsForEntity({ entityType: "tickets", entityId: "nope" }, client)).toEqual([]);
+  });
+
+  it("throws (unwrapped) when the read errors", async () => {
+    const { client } = makeClient({ data: null, error: { message: "boom" } });
+
+    await expect(
+      getEventsForEntity({ entityType: "tickets", entityId: "uuid-1" }, client),
+    ).rejects.toThrow(/boom/);
   });
 });

@@ -16,10 +16,10 @@ Let an **Admin** see the complete chronological **Audit** trail for a single ent
 
 ## Acceptance criteria
 
-- [ ] From any Audit Event row, an Admin can open that entity's full chronological trail.
-- [ ] An Admin can look up an entity by **Ticket Number** (resolved to its uuid) and see its trail.
-- [ ] The query is served by the `(entity_type, entity_id)` index (no sequential scan) — confirm via `explain`.
-- [ ] `npx tsc --noEmit` is clean; tests cover `getEventsForEntity` and the Ticket Number → uuid resolution.
+- [x] From any Audit Event row, an Admin can open that entity's full chronological trail.
+- [x] An Admin can look up an entity by **Ticket Number** (resolved to its uuid) and see its trail.
+- [x] The query is served by the `(entity_type, entity_id)` index (no sequential scan) — confirmed via `explain`: `Index Scan using audit_log_entity_idx`, Index Cond on both `entity_type` and `entity_id`.
+- [x] `npx tsc --noEmit` is clean; tests cover `getEventsForEntity` and the Ticket Number → uuid resolution.
 
 ## Notes
 

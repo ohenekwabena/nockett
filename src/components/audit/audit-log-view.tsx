@@ -1,9 +1,14 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
 import { listEvents, type AuditCursor, type AuditEvent } from "@/lib/audit-service";
 import { groupEventsByTxid } from "@/lib/audit-grouping";
 import { AuditFilterBar } from "@/components/audit/audit-filter-bar";
+import { ActionBadge, ActorCell, formatTimestamp } from "@/components/audit/audit-presentation";
+import {
+  EntityTrailDialog,
+  type EntityTrailTarget,
+} from "@/components/audit/entity-trail-dialog";
 import {
   EMPTY_AUDIT_FILTERS,
   hasActiveFilters,
@@ -11,6 +16,9 @@ import {
   type AuditActor,
   type AuditFilterState,
 } from "@/lib/audit-filters";
+import { ticketService } from "@/services/ticket-service";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface AuditLogViewProps {
   initialEvents: AuditEvent[];
@@ -18,51 +26,6 @@ interface AuditLogViewProps {
   pageSize: number;
   /** Actors for the filter dropdown (all Users; reuses the app's users read). */
   actors: AuditActor[];
-}
-
-const ACTION_BADGE: Record<string, string> = {
-  insert: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  update: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  delete: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-};
-
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-}
-
-function ActionBadge({ action }: { action: string | null }) {
-  return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        ACTION_BADGE[action ?? ""] ?? "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-      }`}
-    >
-      {action ?? "—"}
-    </span>
-  );
-}
-
-function ActorCell({ event }: { event: AuditEvent }) {
-  const primary = event.actor_name || event.actor_email || "System";
-  const secondary = event.actor_name && event.actor_email ? event.actor_email : null;
-  return (
-    <>
-      <span className="text-gray-900 dark:text-gray-100">{primary}</span>
-      {secondary && (
-        <span className="block text-xs text-gray-500 dark:text-gray-400">{secondary}</span>
-      )}
-    </>
-  );
 }
 
 function EntityLabel({ event }: { event: AuditEvent }) {
@@ -82,6 +45,24 @@ function EntityLabel({ event }: { event: AuditEvent }) {
 }
 
 /**
+ * The per-row drill-down affordance (AUDIT-4): opens this event's entity trail.
+ * entity_type/entity_id are nullable in the schema, so a row missing either has
+ * no entity to drill into and renders nothing.
+ */
+function TrailButton({ event, onOpen }: { event: AuditEvent; onOpen: (event: AuditEvent) => void }) {
+  if (!event.entity_type || !event.entity_id) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(event)}
+      className="whitespace-nowrap text-xs text-blue-600 dark:text-blue-400 hover:underline"
+    >
+      View trail
+    </button>
+  );
+}
+
+/**
  * The Admin-only Audit Log surface. Server-rendered with the first (newest)
  * page; "Load more" walks older Audit Events via the keyset read seam. Capture
  * lands by DB trigger (ADR-0004), so this view never writes — it only reads.
@@ -94,6 +75,10 @@ function EntityLabel({ event }: { event: AuditEvent }) {
  * The filter bar (AUDIT-3) narrows by date range, actor, entity type, and
  * action. Any change re-queries page one through the same keyset seam, so the
  * active filters govern both the results and every subsequent "Load more".
+ *
+ * Entity drill-down (AUDIT-4): every row carries a "View trail" affordance that
+ * opens the full chronological history of that entity in a modal, and a Ticket
+ * Number lookup resolves a typed Ticket#… to its uuid and opens the same trail.
  */
 export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }: AuditLogViewProps) {
   const [events, setEvents] = useState<AuditEvent[]>(initialEvents);
@@ -102,6 +87,13 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  // Entity drill-down (AUDIT-4): the open trail target, plus the Ticket Number
+  // lookup's own input/pending/error state (separate from the list's loading).
+  const [trailTarget, setTrailTarget] = useState<EntityTrailTarget | null>(null);
+  const [lookupNumber, setLookupNumber] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
   // Monotonic id stamped on every fetch: a slower earlier response (e.g. the user
   // re-filters mid-load) is discarded so only the newest query wins the state.
@@ -160,6 +152,34 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
     }
   };
 
+  // Open the drill-down for an event's own entity (the row affordance).
+  const openEventTrail = (event: AuditEvent) => {
+    if (!event.entity_type || !event.entity_id) return;
+    setTrailTarget({ entityType: event.entity_type, entityId: event.entity_id });
+  };
+
+  // Resolve a typed Ticket Number to its uuid, then open that Ticket's trail.
+  // Not-found is a normal outcome (shown inline), not an error.
+  const lookupTicketTrail = async (submitEvent: FormEvent<HTMLFormElement>) => {
+    submitEvent.preventDefault();
+    const number = lookupNumber.trim();
+    if (!number || lookupLoading) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      const ticketId = await ticketService.getTicketIdByNumber(number);
+      if (!ticketId) {
+        setLookupError(`No Ticket found with number “${number}”.`);
+        return;
+      }
+      setTrailTarget({ entityType: "tickets", entityId: ticketId, label: number });
+    } catch (err) {
+      setLookupError(err instanceof Error ? err.message : "Ticket lookup failed");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   return (
     <div className="pr-6 mt-10">
       <div className="mb-8">
@@ -182,6 +202,31 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
         onChange={applyFilters}
         onReset={resetFilters}
       />
+
+      <form onSubmit={lookupTicketTrail} className="mb-6 flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            Ticket Number trail
+          </span>
+          <Input
+            value={lookupNumber}
+            onChange={(event) => {
+              setLookupNumber(event.target.value);
+              if (lookupError) setLookupError(null);
+            }}
+            placeholder="Ticket#20260609001"
+            aria-label="Ticket Number"
+            disabled={lookupLoading}
+            className="w-56 font-mono"
+          />
+        </label>
+        <Button type="submit" variant="outline" disabled={lookupLoading || !lookupNumber.trim()}>
+          {lookupLoading ? "Looking up…" : "View trail"}
+        </Button>
+        {lookupError && (
+          <span className="self-center text-sm text-red-600 dark:text-red-400">{lookupError}</span>
+        )}
+      </form>
 
       {events.length === 0 ? (
         <div className="text-center py-12">
@@ -212,6 +257,7 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
                 <th className="px-4 py-3 font-medium">Actor</th>
                 <th className="px-4 py-3 font-medium">Action</th>
                 <th className="px-4 py-3 font-medium">Entity</th>
+                <th className="px-4 py-3 font-medium text-right whitespace-nowrap">Trail</th>
               </tr>
             </thead>
             <tbody>
@@ -256,6 +302,9 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
                           <EntityLabel event={group.primary} />
                         )}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <TrailButton event={group.primary} onOpen={openEventTrail} />
+                      </td>
                     </tr>
                     {isGroup &&
                       isOpen &&
@@ -275,6 +324,9 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
                           </td>
                           <td className="px-4 py-2 pl-10">
                             <EntityLabel event={child} />
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            <TrailButton event={child} onOpen={openEventTrail} />
                           </td>
                         </tr>
                       ))}
@@ -299,6 +351,8 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
           </button>
         </div>
       )}
+
+      <EntityTrailDialog target={trailTarget} onClose={() => setTrailTarget(null)} />
     </div>
   );
 }
