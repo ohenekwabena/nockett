@@ -3,6 +3,7 @@
 import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
 import { listEvents, type AuditCursor, type AuditEvent } from "@/lib/audit-service";
 import { groupEventsByTxid } from "@/lib/audit-grouping";
+import { ExportService } from "@/lib/export-service";
 import { AuditFilterBar } from "@/components/audit/audit-filter-bar";
 import { ActionBadge, ActorCell, formatTimestamp } from "@/components/audit/audit-presentation";
 import {
@@ -27,6 +28,11 @@ interface AuditLogViewProps {
   /** Actors for the filter dropdown (all Users; reuses the app's users read). */
   actors: AuditActor[];
 }
+
+// Export pulls the whole filtered set into the client by walking the keyset
+// pages; a wide page size keeps that to few round-trips. (For very large logs a
+// server-side streaming export would replace this — out of scope, see AUDIT-6.)
+const EXPORT_BATCH_SIZE = 1000;
 
 function EntityLabel({ event }: { event: AuditEvent }) {
   return (
@@ -85,6 +91,7 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
   const [cursor, setCursor] = useState<AuditCursor | null>(initialCursor);
   const [filters, setFilters] = useState<AuditFilterState>(EMPTY_AUDIT_FILTERS);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
@@ -180,25 +187,63 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
     }
   };
 
+  // Export the whole active-filter result set to .xlsx. We re-walk the keyset
+  // pages from the top (not just the rows already loaded) so the file is the
+  // complete filtered log, then hand the rows to the shared ExportService.
+  const exportEvents = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setError(null);
+    try {
+      const serviceFilters = toServiceFilters(filters);
+      const all: AuditEvent[] = [];
+      let pageCursor: AuditCursor | null = null;
+      do {
+        const page = await listEvents({ limit: EXPORT_BATCH_SIZE, cursor: pageCursor, filters: serviceFilters });
+        all.push(...page.events);
+        pageCursor = page.nextCursor;
+      } while (pageCursor);
+
+      if (all.length > 0) {
+        await ExportService.exportAuditEventsToExcel(all, "audit-log-export.xlsx");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to export Audit Events");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="pr-6 mt-10">
-      <div className="mb-8">
-        <h1
-          className="text-6xl font-bold text-gray-900 dark:text-white mb-2"
-          style={{ fontSize: "clamp(2rem, 9.3vw - 2.1rem, 3.75rem)" }}
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1
+            className="text-6xl font-bold text-gray-900 dark:text-white mb-2"
+            style={{ fontSize: "clamp(2rem, 9.3vw - 2.1rem, 3.75rem)" }}
+          >
+            Audit Log
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {events.length} Audit Event{events.length === 1 ? "" : "s"} shown, newest first
+            {filtered ? " · filtered" : ""}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={exportEvents}
+          disabled={exporting || loading || events.length === 0}
+          title="Export the current filtered Audit Log to Excel"
+          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Audit Log
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          {events.length} Audit Event{events.length === 1 ? "" : "s"} shown, newest first
-          {filtered ? " · filtered" : ""}
-        </p>
+          {exporting ? "Exporting…" : "Export to Excel"}
+        </button>
       </div>
 
       <AuditFilterBar
         filters={filters}
         actors={actors}
-        disabled={loading}
+        disabled={loading || exporting}
         onChange={applyFilters}
         onReset={resetFilters}
       />
@@ -344,7 +389,7 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
         <div className="mt-6 flex justify-center">
           <button
             onClick={loadMore}
-            disabled={loading}
+            disabled={loading || exporting}
             className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
             {loading ? "Loading…" : "Load more"}

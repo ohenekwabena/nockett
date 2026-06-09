@@ -30,6 +30,7 @@ export type Database = {
           actor_id: string | null;
           actor_name: string | null;
           changes: Json;
+          changes_fts: string | null;
           created_at: string;
           entity_id: string | null;
           entity_type: string | null;
@@ -42,6 +43,7 @@ export type Database = {
           actor_id?: string | null;
           actor_name?: string | null;
           changes?: Json;
+          changes_fts?: never;
           created_at?: string;
           entity_id?: string | null;
           entity_type?: string | null;
@@ -54,6 +56,7 @@ export type Database = {
           actor_id?: string | null;
           actor_name?: string | null;
           changes?: Json;
+          changes_fts?: never;
           created_at?: string;
           entity_id?: string | null;
           entity_type?: string | null;

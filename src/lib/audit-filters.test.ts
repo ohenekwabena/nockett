@@ -17,6 +17,7 @@ describe("toServiceFilters", () => {
       actorId: null,
       entityType: null,
       action: null,
+      search: null,
     });
   });
 
@@ -27,11 +28,18 @@ describe("toServiceFilters", () => {
       actorId: "user-1",
       entityType: "tickets",
       action: "update",
+      search: "",
     };
     const result = toServiceFilters(state);
     expect(result.actorId).toBe("user-1");
     expect(result.entityType).toBe("tickets");
     expect(result.action).toBe("update");
+  });
+
+  it("trims the search term and maps blank to null (AUDIT-5)", () => {
+    expect(toServiceFilters({ ...EMPTY_AUDIT_FILTERS, search: "  CLOSED  " }).search).toBe("CLOSED");
+    expect(toServiceFilters({ ...EMPTY_AUDIT_FILTERS, search: "   " }).search).toBeNull();
+    expect(toServiceFilters(EMPTY_AUDIT_FILTERS).search).toBeNull();
   });
 
   it("widens the date range to the full local day (from-start, to-end)", () => {
@@ -80,6 +88,11 @@ describe("hasActiveFilters", () => {
     expect(hasActiveFilters({ ...EMPTY_AUDIT_FILTERS, actorId: "user-1" })).toBe(true);
     expect(hasActiveFilters({ ...EMPTY_AUDIT_FILTERS, entityType: "tickets" })).toBe(true);
     expect(hasActiveFilters({ ...EMPTY_AUDIT_FILTERS, action: "delete" })).toBe(true);
+    expect(hasActiveFilters({ ...EMPTY_AUDIT_FILTERS, search: "CLOSED" })).toBe(true);
+  });
+
+  it("ignores a whitespace-only search (not an active filter)", () => {
+    expect(hasActiveFilters({ ...EMPTY_AUDIT_FILTERS, search: "   " })).toBe(false);
   });
 });
 
