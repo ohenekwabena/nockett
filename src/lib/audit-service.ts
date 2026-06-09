@@ -182,3 +182,42 @@ export async function listEvents(
 
   return { events, nextCursor };
 }
+
+/** Identifies one audited row for {@link getEventsForEntity}. */
+export interface EntityTrailParams {
+  /** The audited table name (audit_log.entity_type), e.g. "tickets". */
+  entityType: string;
+  /** The row's id as stored in audit_log.entity_id — the entity uuid AS TEXT. */
+  entityId: string;
+}
+
+/**
+ * The complete chronological Audit trail for a single entity (AUDIT-4): every
+ * Audit Event recorded against (entityType, entityId), oldest-first so it reads
+ * as a timeline (insert → update… → delete).
+ *
+ * Served by the (entity_type, entity_id) index from migration 017 — both columns
+ * are matched by equality, so it stays index-driven (no sequential scan) as the
+ * log grows. A single entity's trail is naturally bounded (a handful to dozens of
+ * events), so unlike {@link listEvents} this returns the whole trail in one read
+ * with no keyset paging. Throws on a data-access error (ADR-0002); a non-admin
+ * caller simply sees an empty trail (RLS).
+ *
+ * @param client injected in tests and for the browser-side drill-down; defaults
+ *   to the shared browser client.
+ */
+export async function getEventsForEntity(
+  { entityType, entityId }: EntityTrailParams,
+  client: SupabaseClient = defaultClient(),
+): Promise<AuditEvent[]> {
+  const { data, error } = await client
+    .from("audit_log")
+    .select("*")
+    .eq("entity_type", entityType)
+    .eq("entity_id", entityId)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) throw new Error(`audit-service.getEventsForEntity failed: ${error.message}`);
+  return (data ?? []) as AuditEvent[];
+}
