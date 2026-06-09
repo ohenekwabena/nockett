@@ -23,6 +23,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      audit_log: {
+        Row: {
+          action: string | null;
+          actor_email: string | null;
+          actor_id: string | null;
+          actor_name: string | null;
+          changes: Json;
+          created_at: string;
+          entity_id: string | null;
+          entity_type: string | null;
+          id: number;
+          txid: number;
+        };
+        Insert: {
+          action?: string | null;
+          actor_email?: string | null;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          changes?: Json;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: never;
+          txid?: number;
+        };
+        Update: {
+          action?: string | null;
+          actor_email?: string | null;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          changes?: Json;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: never;
+          txid?: number;
+        };
+        Relationships: [];
+      };
       departments: {
         Row: {
           id: number;
@@ -434,6 +473,7 @@ export type Database = {
           id: string;
           imageurl: string | null;
           name: string;
+          role: string;
         };
         Insert: {
           created_at?: string | null;
@@ -442,6 +482,7 @@ export type Database = {
           id?: string;
           imageurl?: string | null;
           name: string;
+          role?: string;
         };
         Update: {
           created_at?: string | null;
@@ -450,6 +491,7 @@ export type Database = {
           id?: string;
           imageurl?: string | null;
           name?: string;
+          role?: string;
         };
         Relationships: [
           {

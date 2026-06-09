@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth-service";
-import { IconlyChart, IconlyLogout, IconlySetting, IconlyTicket, IconlyMoon, IconlySun, IconlyArrowRight2, IconlyMoreSquare } from "../icons";
+import { IconlyChart, IconlyLogout, IconlySetting, IconlyTicket, IconlyMoon, IconlySun, IconlyArrowRight2, IconlyMoreSquare, IconlyActivity } from "../icons";
 import { useTheme } from "../ui/theme-provider";
 import { useSideNav } from "@/hooks/use-expanded";
+import { useAuth } from "@/context/auth-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 
 
@@ -12,6 +13,7 @@ export function SideNav() {
     const router = useRouter();
     const { theme, toggleTheme } = useTheme();
     const { isExpanded, toggleExpanded } = useSideNav();
+    const { isAdmin } = useAuth();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -70,6 +72,16 @@ export function SideNav() {
                         </div>
                         <span className={`text-sm font-medium whitespace-nowrap text-gray-800 dark:text-gray-100 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>Settings</span>
                     </div>
+                    {isAdmin && (
+                        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 cursor-pointer transition-all duration-200 hover:scale-105 will-change-transform"
+                            onClick={handlePageRoute.bind(null, '/audit')}
+                        >
+                            <div className="flex justify-center">
+                                <IconlyActivity color={theme === 'dark' ? "#ffffff" : "#000000"} />
+                            </div>
+                            <span className={`text-sm font-medium whitespace-nowrap text-gray-800 dark:text-gray-100 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>Audit</span>
+                        </div>
+                    )}
                 </div>
                 <div className="border-t border-gray-300 dark:border-gray-600 py-6 relative">
                     <span
