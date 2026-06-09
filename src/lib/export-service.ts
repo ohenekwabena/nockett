@@ -1,6 +1,8 @@
 import ExcelJS from "exceljs";
 import { Ticket, ticketService } from "@/services/ticket-service";
 import { loadReferenceOptions } from "@/lib/ticket-intake";
+import { AUDIT_EXPORT_HEADERS, auditEventToRow } from "@/lib/audit-export";
+import type { AuditEvent } from "@/lib/audit-service";
 
 export interface ExportData {
   ticket: Ticket;
@@ -144,6 +146,27 @@ export class ExportService {
     exportDataList.forEach((exportData) => {
       worksheet.addRow(this.transformTicketToRow(exportData));
     });
+
+    this.autoFitColumns(worksheet);
+    await this.downloadWorkbook(workbook, filename);
+  }
+
+  /**
+   * Export Audit Events (AUDIT-6) to .xlsx, reusing the same header styling,
+   * column auto-fit, and client-side Blob download as the ticket export. The
+   * caller passes the already-filtered result set (AuditLogView walks the keyset
+   * pages first), so the file mirrors the on-screen Audit Log. Rows are shaped by
+   * the pure auditEventToRow (lib/audit-export).
+   */
+  static async exportAuditEventsToExcel(
+    events: AuditEvent[],
+    filename: string = "audit-log-export.xlsx",
+  ): Promise<void> {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Audit Log");
+
+    this.setupHeaders(worksheet, AUDIT_EXPORT_HEADERS);
+    events.forEach((event) => worksheet.addRow(auditEventToRow(event)));
 
     this.autoFitColumns(worksheet);
     await this.downloadWorkbook(workbook, filename);
