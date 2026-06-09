@@ -18,6 +18,9 @@ function makeClient(response: { data: unknown; error: unknown }) {
     order: [] as Array<[string, unknown]>,
     limit: [] as number[],
     or: [] as string[],
+    eq: [] as Array<[string, unknown]>,
+    gte: [] as Array<[string, unknown]>,
+    lte: [] as Array<[string, unknown]>,
   };
   const builder: Record<string, unknown> = {
     select: vi.fn((columns: string) => {
@@ -34,6 +37,18 @@ function makeClient(response: { data: unknown; error: unknown }) {
     }),
     or: vi.fn((filter: string) => {
       calls.or.push(filter);
+      return builder;
+    }),
+    eq: vi.fn((column: string, value: unknown) => {
+      calls.eq.push([column, value]);
+      return builder;
+    }),
+    gte: vi.fn((column: string, value: unknown) => {
+      calls.gte.push([column, value]);
+      return builder;
+    }),
+    lte: vi.fn((column: string, value: unknown) => {
+      calls.lte.push([column, value]);
       return builder;
     }),
     then: (resolve: (value: unknown) => void) => resolve(response),
@@ -127,5 +142,75 @@ describe("listEvents", () => {
     const { client } = makeClient({ data: null, error: { message: "boom" } });
 
     await expect(listEvents({ limit: 2 }, client)).rejects.toThrow(/boom/);
+  });
+
+  it("applies no filter predicates when filters are absent", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents({ limit: 2 }, client);
+
+    expect(calls.eq).toEqual([]);
+    expect(calls.gte).toEqual([]);
+    expect(calls.lte).toEqual([]);
+  });
+
+  it("maps a date range to gte/lte on created_at", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents(
+      { limit: 2, filters: { createdFrom: "2026-06-01T00:00:00.000Z", createdTo: "2026-06-09T23:59:59.999Z" } },
+      client,
+    );
+
+    expect(calls.gte).toEqual([["created_at", "2026-06-01T00:00:00.000Z"]]);
+    expect(calls.lte).toEqual([["created_at", "2026-06-09T23:59:59.999Z"]]);
+  });
+
+  it("maps actor, entity type, and action to eq predicates", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents(
+      { limit: 2, filters: { actorId: "user-1", entityType: "tickets", action: "update" } },
+      client,
+    );
+
+    expect(calls.eq).toEqual([
+      ["actor_id", "user-1"],
+      ["entity_type", "tickets"],
+      ["action", "update"],
+    ]);
+  });
+
+  it("treats empty-string and null filter fields as no constraint", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents(
+      { limit: 2, filters: { createdFrom: "", createdTo: null, actorId: "", entityType: null, action: "" } },
+      client,
+    );
+
+    expect(calls.eq).toEqual([]);
+    expect(calls.gte).toEqual([]);
+    expect(calls.lte).toEqual([]);
+  });
+
+  it("composes filters with the keyset cursor (both predicates applied)", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents(
+      {
+        limit: 2,
+        cursor: { created_at: "2026-06-09T04:00:00Z", id: 4 },
+        filters: { entityType: "tickets" },
+      },
+      client,
+    );
+
+    // The filter narrows the set...
+    expect(calls.eq).toEqual([["entity_type", "tickets"]]);
+    // ...and the keyset predicate still walks strictly older — they AND together.
+    expect(calls.or).toEqual([
+      "created_at.lt.2026-06-09T04:00:00Z,and(created_at.eq.2026-06-09T04:00:00Z,id.lt.4)",
+    ]);
   });
 });

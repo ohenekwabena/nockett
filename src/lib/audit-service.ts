@@ -27,11 +27,33 @@ export interface AuditCursor {
   id: number;
 }
 
+/**
+ * Optional narrowing for {@link listEvents} (AUDIT-3). Every field is a single
+ * AND-able predicate, so any combination composes cleanly with the keyset cursor
+ * without disturbing the newest-first order or pagination. An omitted/empty field
+ * is no constraint. Date bounds are absolute ISO instants (the UI widens a picked
+ * calendar day to its full span before calling — see lib/audit-filters).
+ */
+export interface AuditFilters {
+  /** created_at >= this ISO instant (inclusive lower bound). */
+  createdFrom?: string | null;
+  /** created_at <= this ISO instant (inclusive upper bound). */
+  createdTo?: string | null;
+  /** Exact acting User (audit_log.actor_id / auth uid). */
+  actorId?: string | null;
+  /** Exact audited table name (audit_log.entity_type). */
+  entityType?: string | null;
+  /** Exact action: one of {@link AUDIT_ACTIONS}. */
+  action?: string | null;
+}
+
 export interface ListEventsParams {
   /** Page size. Defaults to {@link DEFAULT_AUDIT_PAGE_SIZE}. */
   limit?: number;
   /** Walk strictly older than this cursor; omit/null for the first (newest) page. */
   cursor?: AuditCursor | null;
+  /** Narrow the log; omit for the full log. */
+  filters?: AuditFilters;
 }
 
 export interface ListEventsResult {
@@ -41,6 +63,37 @@ export interface ListEventsResult {
 }
 
 export const DEFAULT_AUDIT_PAGE_SIZE = 50;
+
+/**
+ * The actions an Audit Event can record — the `audit_log.action` CHECK
+ * constraint (migration 017). Drives the action filter dropdown.
+ */
+export const AUDIT_ACTIONS = ["insert", "update", "delete"] as const;
+
+/**
+ * The audited entity types (table names) the entity filter can target, in a
+ * human-sensible order. Mirrors the triggers wired in migrations 017 (`tickets`)
+ * and 018 (the rest); if a new table is audited, add it here so it becomes
+ * filterable. Unlisted types still appear in the log — just not in this dropdown.
+ */
+export const AUDIT_ENTITY_TYPES = [
+  "tickets",
+  "ticket_comments",
+  "ticket_notes",
+  "ticket_attachments",
+  "users",
+  "invites",
+  "assignee",
+  "ticket_categories",
+  "ticket_priorities",
+  "departments",
+  "demarcations",
+  "links",
+  "sites",
+  "service_types",
+  "detection_sources",
+  "traffic_impacts",
+] as const;
 
 // Lazily created so importing this module (e.g. a unit test that injects its own
 // client) never needs the browser env. The server component passes its own
@@ -62,7 +115,7 @@ function defaultClient(): SupabaseClient {
  *   defaults to the shared browser client for client-side "load more".
  */
 export async function listEvents(
-  { limit = DEFAULT_AUDIT_PAGE_SIZE, cursor = null }: ListEventsParams = {},
+  { limit = DEFAULT_AUDIT_PAGE_SIZE, cursor = null, filters }: ListEventsParams = {},
   client: SupabaseClient = defaultClient(),
 ): Promise<ListEventsResult> {
   let query = client
@@ -71,6 +124,15 @@ export async function listEvents(
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit + 1);
+
+  // Filters are plain equality/range predicates, so each ANDs with everything
+  // else — including the keyset .or() below — leaving order and paging intact.
+  // A falsy value (undefined/null/"") is simply no constraint.
+  if (filters?.createdFrom) query = query.gte("created_at", filters.createdFrom);
+  if (filters?.createdTo) query = query.lte("created_at", filters.createdTo);
+  if (filters?.actorId) query = query.eq("actor_id", filters.actorId);
+  if (filters?.entityType) query = query.eq("entity_type", filters.entityType);
+  if (filters?.action) query = query.eq("action", filters.action);
 
   if (cursor) {
     // Strict keyset predicate: created_at < c.created_at OR (=, id < c.id).
