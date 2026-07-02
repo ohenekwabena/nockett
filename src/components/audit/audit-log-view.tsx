@@ -1,15 +1,32 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
+/**
+ * The Admin-only Audit Log surface, in the Nockett design language (design
+ * audit.jsx). Server-rendered with the first (newest) page; "Load more" walks
+ * older Audit Events via the keyset read seam. Capture lands by DB trigger
+ * (ADR-0004), so this view never writes — it only reads.
+ *
+ * A cascade burst (e.g. deleting a Ticket, whose comments/notes/attachments
+ * cascade in the same transaction) shares one txid, so the feed is collapsed
+ * into per-txid groups (AUDIT-2). The filter bar (AUDIT-3) narrows by payload
+ * search, date range, actor, entity type, and action; the Ticket Number lookup
+ * (AUDIT-4) resolves a typed Ticket#… to its uuid and opens its trail.
+ */
+
+import { useMemo, useRef, useState } from "react";
 import { listEvents, type AuditCursor, type AuditEvent } from "@/lib/audit-service";
-import { groupEventsByTxid } from "@/lib/audit-grouping";
+import { groupEventsByTxid, type AuditEventGroup } from "@/lib/audit-grouping";
 import { ExportService } from "@/lib/export-service";
 import { AuditFilterBar } from "@/components/audit/audit-filter-bar";
-import { ActionBadge, ActorCell, formatTimestamp } from "@/components/audit/audit-presentation";
 import {
-  EntityTrailDialog,
-  type EntityTrailTarget,
-} from "@/components/audit/entity-trail-dialog";
+  ActionBadge,
+  DiffTable,
+  actorName,
+  entityLabel,
+  eventSummary,
+  formatTimestamp,
+} from "@/components/audit/audit-presentation";
+import { EntityTrailDialog, type EntityTrailTarget } from "@/components/audit/entity-trail-dialog";
 import {
   EMPTY_AUDIT_FILTERS,
   hasActiveFilters,
@@ -18,8 +35,7 @@ import {
   type AuditFilterState,
 } from "@/lib/audit-filters";
 import { ticketService } from "@/services/ticket-service";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Avatar, Btn, Chip, EmptyState, MIcon } from "@/components/nk/ui";
 
 interface AuditLogViewProps {
   initialEvents: AuditEvent[];
@@ -30,62 +46,71 @@ interface AuditLogViewProps {
 }
 
 // Export pulls the whole filtered set into the client by walking the keyset
-// pages; a wide page size keeps that to few round-trips. (For very large logs a
-// server-side streaming export would replace this — out of scope, see AUDIT-6.)
+// pages; a wide page size keeps that to few round-trips (AUDIT-6 caveat).
 const EXPORT_BATCH_SIZE = 1000;
 
-function EntityLabel({ event }: { event: AuditEvent }) {
+function AuditRow({
+  group,
+  onTrail,
+}: {
+  group: AuditEventGroup;
+  onTrail: (event: AuditEvent) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const head = group.primary;
   return (
-    <>
-      <span className="text-gray-900 dark:text-gray-100">{event.entity_type}</span>
-      {event.entity_id && (
-        <span
-          className="block text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[16rem]"
-          title={event.entity_id}
-        >
-          {event.entity_id}
+    <div className="audit-row">
+      <button type="button" className="audit-main" onClick={() => setOpen(!open)}>
+        <Avatar name={actorName(head)} size={26} />
+        <span className="audit-body">
+          <span className="audit-line">
+            <strong>{actorName(head)}</strong> {eventSummary(head)}
+            {group.related.length > 0 && <span className="chip chip-soft">+{group.related.length} cascaded</span>}
+          </span>
+          <span className="audit-meta">
+            <ActionBadge action={head.action} />
+            <span className="chip chip-soft">{entityLabel(head.entity_type)}</span>
+            {head.entity_id && (
+              <span
+                className="link-btn mono"
+                role="button"
+                tabIndex={0}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onTrail(head);
+                }}
+                title="View this entity's trail"
+              >
+                {head.entity_id.slice(0, 8)}…
+              </span>
+            )}
+            <span className="dim">{formatTimestamp(head.created_at)}</span>
+          </span>
         </span>
+        <MIcon name={open ? "expand_less" : "expand_more"} size={17} className="dim" />
+      </button>
+      {open && (
+        <div className="audit-detail">
+          {group.events.map((event) => (
+            <div key={event.id} className="audit-sub">
+              {group.events.length > 1 && (
+                <div className="audit-subhead">
+                  <ActionBadge action={event.action} />
+                  <span className="dim">{entityLabel(event.entity_type)}</span> — {eventSummary(event)}
+                </div>
+              )}
+              <DiffTable event={event} />
+            </div>
+          ))}
+          <div className="dim" style={{ fontSize: 11.5 }}>
+            Transaction {head.txid} · written by the database trigger, actor snapshotted at write time
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
-/**
- * The per-row drill-down affordance (AUDIT-4): opens this event's entity trail.
- * entity_type/entity_id are nullable in the schema, so a row missing either has
- * no entity to drill into and renders nothing.
- */
-function TrailButton({ event, onOpen }: { event: AuditEvent; onOpen: (event: AuditEvent) => void }) {
-  if (!event.entity_type || !event.entity_id) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(event)}
-      className="whitespace-nowrap text-xs text-blue-600 dark:text-blue-400 hover:underline"
-    >
-      View trail
-    </button>
-  );
-}
-
-/**
- * The Admin-only Audit Log surface. Server-rendered with the first (newest)
- * page; "Load more" walks older Audit Events via the keyset read seam. Capture
- * lands by DB trigger (ADR-0004), so this view never writes — it only reads.
- *
- * A cascade burst (e.g. deleting a Ticket, whose comments/notes/attachments
- * cascade in the same transaction) shares one txid, so the feed is collapsed
- * into per-txid groups: a multi-row group shows its parent with a "+N related
- * rows" disclosure that expands to reveal the child Audit Events (AUDIT-2).
- *
- * The filter bar (AUDIT-3) narrows by date range, actor, entity type, and
- * action. Any change re-queries page one through the same keyset seam, so the
- * active filters govern both the results and every subsequent "Load more".
- *
- * Entity drill-down (AUDIT-4): every row carries a "View trail" affordance that
- * opens the full chronological history of that entity in a modal, and a Ticket
- * Number lookup resolves a typed Ticket#… to its uuid and opens the same trail.
- */
 export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }: AuditLogViewProps) {
   const [events, setEvents] = useState<AuditEvent[]>(initialEvents);
   const [cursor, setCursor] = useState<AuditCursor | null>(initialCursor);
@@ -93,10 +118,9 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   // Entity drill-down (AUDIT-4): the open trail target, plus the Ticket Number
-  // lookup's own input/pending/error state (separate from the list's loading).
+  // lookup's own input/pending state (separate from the list's loading).
   const [trailTarget, setTrailTarget] = useState<EntityTrailTarget | null>(null);
   const [lookupNumber, setLookupNumber] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -109,16 +133,7 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
   const groups = useMemo(() => groupEventsByTxid(events), [events]);
   const filtered = hasActiveFilters(filters);
 
-  const toggle = (key: number) =>
-    setExpanded((previous) => {
-      const next = new Set(previous);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
-  // Re-query the first (newest) page under a new filter set. Resets the feed and
-  // cursor, so pagination continues within the active filters.
+  // Re-query the first (newest) page under a new filter set.
   const applyFilters = async (next: AuditFilterState) => {
     const requestId = ++requestRef.current;
     setFilters(next);
@@ -129,7 +144,6 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
       if (requestRef.current !== requestId) return; // superseded by a newer query
       setEvents(result.events);
       setCursor(result.nextCursor);
-      setExpanded(new Set());
     } catch (err) {
       if (requestRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : "Failed to filter Audit Events");
@@ -137,8 +151,6 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
       if (requestRef.current === requestId) setLoading(false);
     }
   };
-
-  const resetFilters = () => applyFilters(EMPTY_AUDIT_FILTERS);
 
   const loadMore = async () => {
     if (!cursor || loading) return;
@@ -148,7 +160,7 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
     try {
       // Carry the active filters so older pages stay within the same slice.
       const result = await listEvents({ limit: pageSize, cursor, filters: toServiceFilters(filters) });
-      if (requestRef.current !== requestId) return; // a filter change superseded this page
+      if (requestRef.current !== requestId) return;
       setEvents((previous) => [...previous, ...result.events]);
       setCursor(result.nextCursor);
     } catch (err) {
@@ -159,16 +171,13 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
     }
   };
 
-  // Open the drill-down for an event's own entity (the row affordance).
   const openEventTrail = (event: AuditEvent) => {
     if (!event.entity_type || !event.entity_id) return;
     setTrailTarget({ entityType: event.entity_type, entityId: event.entity_id });
   };
 
   // Resolve a typed Ticket Number to its uuid, then open that Ticket's trail.
-  // Not-found is a normal outcome (shown inline), not an error.
-  const lookupTicketTrail = async (submitEvent: FormEvent<HTMLFormElement>) => {
-    submitEvent.preventDefault();
+  const lookupTicketTrail = async () => {
     const number = lookupNumber.trim();
     if (!number || lookupLoading) return;
     setLookupLoading(true);
@@ -187,9 +196,8 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
     }
   };
 
-  // Export the whole active-filter result set to .xlsx. We re-walk the keyset
-  // pages from the top (not just the rows already loaded) so the file is the
-  // complete filtered log, then hand the rows to the shared ExportService.
+  // Export the whole active-filter result set to .xlsx by re-walking the keyset
+  // pages from the top, so the file is the complete filtered log.
   const exportEvents = async () => {
     if (exporting) return;
     setExporting(true);
@@ -215,185 +223,82 @@ export function AuditLogView({ initialEvents, initialCursor, pageSize, actors }:
   };
 
   return (
-    <div className="pr-6 mt-10">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1
-            className="text-6xl font-bold text-gray-900 dark:text-white mb-2"
-            style={{ fontSize: "clamp(2rem, 9.3vw - 2.1rem, 3.75rem)" }}
-          >
-            Audit Log
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            {events.length} Audit Event{events.length === 1 ? "" : "s"} shown, newest first
-            {filtered ? " · filtered" : ""}
-          </p>
+    <div className="page">
+      <div className="page-head">
+        <div className="page-title-row">
+          <MIcon name="verified_user" size={20} className="accent" fill={1} />
+          <h1>Audit Log</h1>
+          <Chip tone="blue">Admin only</Chip>
         </div>
-        <button
-          type="button"
-          onClick={exportEvents}
-          disabled={exporting || loading || events.length === 0}
-          title="Export the current filtered Audit Log to Excel"
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {exporting ? "Exporting…" : "Export to Excel"}
-        </button>
+        <div className="page-actions">
+          <div className="search-box" style={{ width: 210 }}>
+            <MIcon name="tag" size={15} />
+            <input
+              placeholder="Look up Ticket#…"
+              value={lookupNumber}
+              disabled={lookupLoading}
+              onChange={(event) => {
+                setLookupNumber(event.target.value);
+                if (lookupError) setLookupError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") lookupTicketTrail();
+              }}
+            />
+          </div>
+          <Btn small icon="download" disabled={exporting || loading || events.length === 0} onClick={exportEvents}>
+            {exporting ? "Exporting…" : "Export"}
+          </Btn>
+        </div>
       </div>
+
+      {lookupError && (
+        <div className="banner-err" style={{ marginBottom: 12 }}>
+          <MIcon name="error" size={14} fill={1} /> {lookupError}
+        </div>
+      )}
 
       <AuditFilterBar
         filters={filters}
         actors={actors}
         disabled={loading || exporting}
         onChange={applyFilters}
-        onReset={resetFilters}
+        onReset={() => applyFilters(EMPTY_AUDIT_FILTERS)}
       />
 
-      <form onSubmit={lookupTicketTrail} className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Ticket Number trail
-          </span>
-          <Input
-            value={lookupNumber}
-            onChange={(event) => {
-              setLookupNumber(event.target.value);
-              if (lookupError) setLookupError(null);
-            }}
-            placeholder="Ticket#20260609001"
-            aria-label="Ticket Number"
-            disabled={lookupLoading}
-            className="w-56 font-mono"
-          />
-        </label>
-        <Button type="submit" variant="outline" disabled={lookupLoading || !lookupNumber.trim()}>
-          {lookupLoading ? "Looking up…" : "View trail"}
-        </Button>
-        {lookupError && (
-          <span className="self-center text-sm text-red-600 dark:text-red-400">{lookupError}</span>
-        )}
-      </form>
-
       {events.length === 0 ? (
-        <div className="text-center py-12">
-          {filtered ? (
-            <>
-              <p className="text-gray-600 dark:text-gray-400 mb-2">
-                No Audit Events match these filters
-              </p>
-              <p className="text-gray-500 dark:text-gray-500 text-sm">
-                Try widening the date range or clearing a filter.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-gray-600 dark:text-gray-400 mb-2">No Audit Events yet</p>
-              <p className="text-gray-500 dark:text-gray-500 text-sm">
-                Changes across the app will appear here as they happen.
-              </p>
-            </>
-          )}
-        </div>
+        filtered ? (
+          <EmptyState
+            icon="search_off"
+            title="No matching events"
+            body="Adjust the filters or search to widen the window."
+          />
+        ) : (
+          <EmptyState
+            icon="verified_user"
+            title="No Audit Events yet"
+            body="Changes across the app will appear here as they happen."
+          />
+        )
       ) : (
-        <div className="overflow-x-auto rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
-                <th className="px-4 py-3 font-medium whitespace-nowrap">Timestamp</th>
-                <th className="px-4 py-3 font-medium">Actor</th>
-                <th className="px-4 py-3 font-medium">Action</th>
-                <th className="px-4 py-3 font-medium">Entity</th>
-                <th className="px-4 py-3 font-medium text-right whitespace-nowrap">Trail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group) => {
-                const isGroup = group.related.length > 0;
-                const isOpen = expanded.has(group.key);
-                return (
-                  <Fragment key={group.key}>
-                    <tr className="border-b border-gray-100 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
-                        {formatTimestamp(group.primary.created_at)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <ActorCell event={group.primary} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <ActionBadge action={group.primary.action} />
-                      </td>
-                      <td className="px-4 py-3">
-                        {isGroup ? (
-                          <button
-                            type="button"
-                            onClick={() => toggle(group.key)}
-                            aria-expanded={isOpen}
-                            className="flex items-start gap-2 text-left hover:opacity-80 transition-opacity"
-                          >
-                            <span
-                              aria-hidden
-                              className="mt-0.5 text-gray-400 dark:text-gray-500 select-none"
-                            >
-                              {isOpen ? "▾" : "▸"}
-                            </span>
-                            <span>
-                              <EntityLabel event={group.primary} />
-                              <span className="block text-xs text-blue-600 dark:text-blue-400">
-                                +{group.related.length} related row
-                                {group.related.length === 1 ? "" : "s"}
-                              </span>
-                            </span>
-                          </button>
-                        ) : (
-                          <EntityLabel event={group.primary} />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <TrailButton event={group.primary} onOpen={openEventTrail} />
-                      </td>
-                    </tr>
-                    {isGroup &&
-                      isOpen &&
-                      group.related.map((child) => (
-                        <tr
-                          key={child.id}
-                          className="border-b border-gray-100 dark:border-gray-700/50 last:border-0 bg-gray-50/60 dark:bg-gray-900/20"
-                        >
-                          <td className="px-4 py-2 whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            {formatTimestamp(child.created_at)}
-                          </td>
-                          <td className="px-4 py-2">
-                            <ActorCell event={child} />
-                          </td>
-                          <td className="px-4 py-2">
-                            <ActionBadge action={child.action} />
-                          </td>
-                          <td className="px-4 py-2 pl-10">
-                            <EntityLabel event={child} />
-                          </td>
-                          <td className="px-4 py-2 text-right">
-                            <TrailButton event={child} onOpen={openEventTrail} />
-                          </td>
-                        </tr>
-                      ))}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="audit-feed">
+          {groups.map((group) => (
+            <AuditRow key={group.key} group={group} onTrail={openEventTrail} />
+          ))}
         </div>
       )}
 
-      {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && (
+        <div className="banner-err" style={{ marginTop: 12 }}>
+          <MIcon name="error" size={14} fill={1} /> {error}
+        </div>
+      )}
 
       {cursor && (
-        <div className="mt-6 flex justify-center">
-          <button
-            onClick={loadMore}
-            disabled={loading || exporting}
-            className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-          >
+        <div className="row-center">
+          <Btn small icon="expand_more" disabled={loading || exporting} onClick={loadMore}>
             {loading ? "Loading…" : "Load more"}
-          </button>
+          </Btn>
         </div>
       )}
 
