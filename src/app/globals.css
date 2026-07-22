@@ -1729,8 +1729,53 @@ a.attach-name:hover {
   background: #3a2f16;
   color: #f1c570;
 }
+.rota-month {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.rota-month-label {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 108px;
+  text-align: center;
+}
+.rota-next {
+  color: var(--faint);
+}
+.cell-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 7px;
+  position: relative;
+}
+.cell-btn:hover > span,
+.cell-btn:focus-visible > span {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+.cell-edited::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1.5px solid var(--panel);
+}
+.rota-weekly-hours {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--dim);
+  white-space: nowrap;
+}
 .stats-row {
-  grid-template-columns: 1.6fr 0.8fr 0.8fr 1fr 1.2fr 1.2fr !important;
+  grid-template-columns: 1.5fr 0.7fr 0.7fr 0.9fr 1.4fr 1.1fr 1.1fr !important;
 }
 .constraint-row {
   display: grid;
