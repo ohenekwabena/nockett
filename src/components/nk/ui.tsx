@@ -16,6 +16,7 @@ import React, {
   type ReactNode,
   type RefObject,
 } from "react";
+import { createPortal } from "react-dom";
 
 /* ---------- Material Symbol ---------- */
 export function MIcon({
@@ -327,6 +328,8 @@ export function Popover({
   children,
   align = "left",
   width,
+  minWidth,
+  fixed,
 }: {
   anchor: RefObject<HTMLElement | null>;
   open: boolean;
@@ -334,8 +337,17 @@ export function Popover({
   children: ReactNode;
   align?: "left" | "right";
   width?: number;
+  /** "100%" resolves to the anchor's width in fixed mode. */
+  minWidth?: number | string;
+  /**
+   * Position against the viewport via a portal instead of the nearest
+   * positioned ancestor, so the menu escapes overflow clipping (scrolling
+   * modals / side panels). Closes on outside scroll.
+   */
+  fixed?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<CSSProperties | null>(null);
   useEffect(() => {
     if (!open) return;
     const handler = (event: MouseEvent) => {
@@ -352,9 +364,47 @@ export function Popover({
     return () => document.removeEventListener("mousedown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  useEffect(() => {
+    if (!open || !fixed) {
+      setPos(null);
+      return;
+    }
+    const el = anchor.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const style: CSSProperties = { position: "fixed", zIndex: 120 };
+    if (align === "right") style.right = window.innerWidth - rect.right;
+    else style.left = rect.left;
+    // Flip upward when the space below can't fit a typical menu.
+    if (spaceBelow < 260 && rect.top > spaceBelow) style.bottom = window.innerHeight - rect.top + 6;
+    else style.top = rect.bottom + 6;
+    style.minWidth = minWidth === "100%" ? rect.width : minWidth;
+    setPos(style);
+    const dismiss = (event: Event) => {
+      if (ref.current && event.target instanceof Node && ref.current.contains(event.target)) return;
+      onClose();
+    };
+    window.addEventListener("scroll", dismiss, true);
+    window.addEventListener("resize", dismiss);
+    return () => {
+      window.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("resize", dismiss);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, fixed]);
   if (!open) return null;
+  if (fixed) {
+    if (!pos) return null;
+    return createPortal(
+      <div ref={ref} className="popover" style={{ ...pos, width }}>
+        {children}
+      </div>,
+      document.body
+    );
+  }
   return (
-    <div ref={ref} className="popover" style={{ [align]: 0, width } as CSSProperties}>
+    <div ref={ref} className="popover" style={{ [align]: 0, width, minWidth } as CSSProperties}>
       {children}
     </div>
   );
@@ -526,6 +576,40 @@ export function Field({
   );
 }
 
+/**
+ * Popover-based selects (the ticket-panel dropdown pattern, shared app-wide).
+ * `Select` is the form-field variant (input-styled trigger); `InlineSelect` is
+ * the borderless inline variant used in property rows. Both render the same
+ * `pop-item` menu inside a `Popover`.
+ */
+function PopItems({
+  items,
+  value,
+  onSelect,
+  render,
+}: {
+  items: Array<{ value: string; label: string }>;
+  value: string;
+  onSelect: (value: string) => void;
+  render?: (value: string) => ReactNode;
+}) {
+  return (
+    <>
+      {items.map((item) => (
+        <button
+          key={item.value}
+          type="button"
+          className={"pop-item" + (item.value === value ? " on" : "")}
+          onClick={() => onSelect(item.value)}
+        >
+          {render ? render(item.value) : item.label}
+          {item.value === value && <MIcon name="check" size={14} />}
+        </button>
+      ))}
+    </>
+  );
+}
+
 export function Select({
   value,
   onChange,
@@ -539,23 +623,79 @@ export function Select({
   placeholder?: string;
   disabled?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  const items = options.map((option) =>
+    typeof option === "string" ? { value: option, label: option } : option
+  );
+  // A placeholder is a selectable empty choice, matching the old
+  // `<option value="">` behavior.
+  if (placeholder) items.unshift({ value: "", label: placeholder });
+  const current = items.find((item) => item.value === (value || ""));
+  const showLabel = current ? current.label : value || placeholder || "";
+  const showsPlaceholder = !value && !!placeholder;
   return (
-    <select
-      className="input"
-      value={value || ""}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={disabled}
-    >
-      {placeholder && <option value="">{placeholder}</option>}
-      {options.map((option) => {
-        const opt = typeof option === "string" ? { value: option, label: option } : option;
-        return (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        );
-      })}
-    </select>
+    <span className="sel-wrap">
+      <button
+        ref={btn}
+        type="button"
+        className="input sel-btn"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(event) => event.key === "Escape" && setOpen(false)}
+      >
+        <span className={"sel-v" + (showsPlaceholder ? " dim" : "")}>{showLabel}</span>
+        <MIcon name="expand_more" size={15} className="dim" />
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} minWidth="100%" fixed>
+        <PopItems
+          items={items}
+          value={value || ""}
+          onSelect={(next) => {
+            onChange(next);
+            setOpen(false);
+          }}
+        />
+      </Popover>
+    </span>
+  );
+}
+
+export function InlineSelect({
+  value,
+  options,
+  onChange,
+  render,
+  placeholder = "—",
+}: {
+  value?: string | null;
+  options: string[];
+  onChange: (value: string) => void;
+  render?: (value: string) => ReactNode;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  return (
+    <span style={{ position: "relative" }}>
+      <button ref={btn} type="button" className="inline-sel-btn" onClick={() => setOpen(!open)}>
+        {value ? (render ? render(value) : value) : <span className="dim">{placeholder}</span>}
+        <MIcon name="expand_more" size={14} className="dim" />
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} width={200} fixed>
+        <PopItems
+          items={options.map((option) => ({ value: option, label: option }))}
+          value={value || ""}
+          onSelect={(next) => {
+            onChange(next);
+            setOpen(false);
+          }}
+          render={render}
+        />
+      </Popover>
+    </span>
   );
 }
 

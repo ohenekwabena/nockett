@@ -1095,6 +1095,30 @@ textarea.input {
 select.input {
   width: auto;
 }
+.sel-wrap {
+  position: relative;
+  min-width: 0;
+  display: block;
+}
+.sel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  min-width: 120px;
+}
+.sel-btn:disabled {
+  cursor: default;
+}
+.sel-btn .sel-v {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .field {
   display: flex;
   flex-direction: column;

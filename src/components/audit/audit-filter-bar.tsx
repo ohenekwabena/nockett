@@ -15,7 +15,7 @@ import {
   type AuditActor,
   type AuditFilterState,
 } from "@/lib/audit-filters";
-import { MIcon } from "@/components/nk/ui";
+import { MIcon, Select } from "@/components/nk/ui";
 
 interface AuditFilterBarProps {
   filters: AuditFilterState;
@@ -68,45 +68,30 @@ export function AuditFilterBar({ filters, actors, disabled, onChange, onReset }:
         onChange={(event) => set({ to: event.target.value })}
         aria-label="To date"
       />
-      <select
-        className="input"
+      <Select
         value={filters.actorId}
         disabled={disabled}
-        onChange={(event) => set({ actorId: event.target.value })}
-      >
-        <option value="">All actors</option>
-        {actors.map((actor) => (
-          <option key={actor.id} value={actor.id}>
-            {actor.name || actor.email || actor.id}
-          </option>
-        ))}
-      </select>
-      <select
-        className="input"
+        onChange={(actorId) => set({ actorId })}
+        placeholder="All actors"
+        options={actors.map((actor) => ({
+          value: actor.id,
+          label: actor.name || actor.email || actor.id,
+        }))}
+      />
+      <Select
         value={filters.entityType}
         disabled={disabled}
-        onChange={(event) => set({ entityType: event.target.value })}
-      >
-        <option value="">All entities</option>
-        {AUDIT_ENTITY_TYPES.map((type) => (
-          <option key={type} value={type}>
-            {humanizeLabel(type)}
-          </option>
-        ))}
-      </select>
-      <select
-        className="input"
+        onChange={(entityType) => set({ entityType })}
+        placeholder="All entities"
+        options={AUDIT_ENTITY_TYPES.map((type) => ({ value: type, label: humanizeLabel(type) }))}
+      />
+      <Select
         value={filters.action}
         disabled={disabled}
-        onChange={(event) => set({ action: event.target.value })}
-      >
-        <option value="">All actions</option>
-        {AUDIT_ACTIONS.map((action) => (
-          <option key={action} value={action}>
-            {humanizeLabel(action)}
-          </option>
-        ))}
-      </select>
+        onChange={(action) => set({ action })}
+        placeholder="All actions"
+        options={AUDIT_ACTIONS.map((action) => ({ value: action, label: humanizeLabel(action) }))}
+      />
       {hasActiveFilters(filters) && (
         <button type="button" className="link-btn" onClick={onReset} disabled={disabled}>
           Clear

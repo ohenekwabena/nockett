@@ -24,8 +24,8 @@ import {
   Chip,
   ConfirmDialog,
   IconBtn,
+  InlineSelect,
   MIcon,
-  Popover,
   PriorityCell,
   StatusBadge,
   STATUS_ORDER,
@@ -47,47 +47,6 @@ function PropRow({ label, icon, children }: { label: string; icon?: string; chil
         {children}
       </span>
     </div>
-  );
-}
-
-function InlineSelect({
-  value,
-  options,
-  onChange,
-  render,
-  placeholder = "—",
-}: {
-  value?: string | null;
-  options: string[];
-  onChange: (value: string) => void;
-  render?: (value: string) => ReactNode;
-  placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const btn = useRef<HTMLButtonElement>(null);
-  return (
-    <span style={{ position: "relative" }}>
-      <button ref={btn} type="button" className="inline-sel-btn" onClick={() => setOpen(!open)}>
-        {value ? (render ? render(value) : value) : <span className="dim">{placeholder}</span>}
-        <MIcon name="expand_more" size={14} className="dim" />
-      </button>
-      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} width={200}>
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={"pop-item" + (option === value ? " on" : "")}
-            onClick={() => {
-              onChange(option);
-              setOpen(false);
-            }}
-          >
-            {render ? render(option) : option}
-            {option === value && <MIcon name="check" size={14} />}
-          </button>
-        ))}
-      </Popover>
-    </span>
   );
 }
 
