@@ -288,6 +288,9 @@ h2 {
   color: var(--dim);
   cursor: pointer;
   text-decoration: none;
+  /* Keep their size instead of shrinking their label into the search field. */
+  flex: none;
+  white-space: nowrap;
 }
 .crumb:hover {
   color: var(--ink);
@@ -314,6 +317,7 @@ h2 {
   align-items: center;
   gap: 7px;
   width: 280px;
+  min-width: 0;
   background: var(--panel);
   border: 1px solid var(--hair);
   border-radius: 9px;
@@ -338,6 +342,13 @@ h2 {
   border-radius: 4px;
   padding: 1px 5px;
   font-family: inherit;
+}
+/* The search icon-button (collapsed search) and the in-field close button are
+   mobile-only; on desktop the search field is always visible. Qualified with
+   .topbar so these outrank the .icon-btn { display: inline-flex } base rule. */
+.topbar .search-toggle,
+.topbar .search-close {
+  display: none;
 }
 
 /* ---------- buttons ---------- */
@@ -696,11 +707,15 @@ button.chip {
 .tk-table {
   border: 1px solid var(--hair);
   border-radius: 12px;
-  overflow: hidden;
+  /* Scroll sideways when the panel is too narrow for the full grid (mobile)
+     instead of dropping or cramming columns. Rows carry a min-width below. */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .tk-row {
   display: grid;
   grid-template-columns: 34px 108px 1fr 128px 108px 92px 86px;
+  min-width: 720px;
   align-items: center;
   gap: 8px;
   padding: 0 14px;
@@ -1881,6 +1896,12 @@ a.attach-name:hover {
 }
 .stats-row {
   grid-template-columns: 1.5fr 0.7fr 0.7fr 0.9fr 1.4fr 1.1fr 1.1fr !important;
+  min-width: 820px;
+}
+/* Keep the hours ("204h / 216") and other cells on one line — the row scrolls
+   sideways on mobile rather than wrapping numbers onto two lines. */
+.stats-row > span {
+  white-space: nowrap;
 }
 .constraint-row {
   display: grid;
@@ -2240,14 +2261,18 @@ a.attach-name:hover {
   display: none;
 }
 @media (max-width: 1100px) {
-  .tk-row {
-    grid-template-columns: 30px 92px 1fr 118px 96px 78px;
-  }
-  .tk-row > :nth-child(7) {
+  /* The sidebar is still on-screen here, so the Overview/Tickets breadcrumb
+     pills (which just duplicate the sidebar nav) are dropped — otherwise the
+     search field collides with them. */
+  .crumbs .crumb {
     display: none;
   }
   .kanban {
-    grid-template-columns: 1fr;
+    /* Keep the three status columns side by side and scroll sideways (rather
+       than stacking) so cards can still be dragged between states on mobile. */
+    grid-template-columns: repeat(3, minmax(250px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
   .detail-panel {
     position: fixed;
@@ -2283,15 +2308,44 @@ a.attach-name:hover {
   .main-wrap {
     padding: 10px;
   }
-  .search-box {
-    width: 150px;
-  }
-  .tk-row {
-    grid-template-columns: 30px 1fr 110px;
-  }
-  .tk-row > :nth-child(2),
-  .tk-row > :nth-child(5),
-  .tk-row > :nth-child(6) {
+  /* Icon-only mobile header: the pills are already hidden (≤1100); here we also
+     drop the New ticket label (icon only) and collapse search to an icon. */
+  .topbar .btn-tx {
     display: none;
+  }
+  .topbar-right .btn-primary {
+    padding: 7px 9px;
+  }
+  .topbar .search-toggle {
+    display: inline-flex;
+  }
+  .search-box {
+    display: none;
+  }
+  .search-box kbd {
+    display: none;
+  }
+
+  /* Tapping the search icon expands a full-width field; the title and the
+     New ticket button step aside until it's closed with the ✕. */
+  .topbar-searching .search-toggle {
+    display: none;
+  }
+  .topbar-searching .crumbs,
+  .topbar-searching .topbar-right .btn-primary {
+    display: none;
+  }
+  .topbar-searching .topbar-right {
+    flex: 1;
+    min-width: 0;
+  }
+  .topbar-searching .search-box {
+    display: flex;
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+  .topbar-searching .search-close {
+    display: inline-flex;
   }
 }
