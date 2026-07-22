@@ -17,7 +17,8 @@ Automated shift scheduling for 8 personnel working 12-hour day/night rotations, 
 4. **Wednesday staffing** — exactly 3 on the day shift on Wednesdays, exactly 2 every other day
 5. **Max 4 working days per person per week**
 6. **Shift cap pro-rated to the window** — the 180h/28-day baseline scales with the number of scheduled days (`maxShiftsForDays`), since 24/7 cover for 8 people over a 31+ day month cannot fit under a flat 180h
-7. **Stable pairs** — each week splits the 4-person day team and 4-person night team into two pairs that alternate across the week
+7. **Balanced day/night split** — per person, |day shifts − night shifts| ≤ 3 in a 4-week window, ≤ 4 in longer windows (`dayNightImbalanceLimit`). Weeks are assigned whole, so in 5/6-week windows half the roster necessarily gets one more day-week than night-weeks; the weekly team builder balances day/night load greedily and the pair planner hands the heavier 4-day role to whoever is behind on that shift type
+8. **Stable pairs** — each week splits the 4-person day team and 4-person night team into two pairs that alternate across the week; people rest-blocked for the week's first day (fresh off the previous Sunday's night) are paired together so the other pair can open the week
 
 ## Files
 - `src/lib/schedule-service.ts` — month layout (`buildMonthWeeks`), solver (`generateMonthSchedule`), stats (`getScheduleStats`), manual edits (`applyShiftOverrides`)

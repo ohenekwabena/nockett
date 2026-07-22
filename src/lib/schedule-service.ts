@@ -45,6 +45,16 @@ export const MAX_CONSECUTIVE_NIGHTS = 2;
 export const MAX_CONSECUTIVE_DAY_SHIFTS = 3;
 export const MAX_DAYS_PER_WEEK = 4;
 
+/**
+ * Allowed |day shifts - night shifts| per person. Weeks are assigned whole,
+ * so in a 5/6-week window half the roster necessarily gets one more day-week
+ * than night-weeks (or vice versa) — a ±3 spread is only guaranteed
+ * reachable in an exact 4-week window; longer windows get ±4.
+ */
+export function dayNightImbalanceLimit(scheduledDays: number): number {
+  return scheduledDays <= BASELINE_DAYS ? 3 : 4;
+}
+
 export const MONTH_NAMES = [
   "January",
   "February",
@@ -74,6 +84,8 @@ type PersonWeekCounter = Record<string, number[]>;
 
 interface SolverState {
   totalShifts: PersonCounter;
+  dayShifts: PersonCounter;
+  nightShifts: PersonCounter;
   weeklyShifts: PersonWeekCounter;
   consecutiveNights: PersonCounter;
   consecutiveDayShifts: PersonCounter;
@@ -173,7 +185,7 @@ export function generateMonthSchedule(year: number, month: number, seed: number)
       `4 day-team personnel + 4 night-team personnel per week, shifts assigned in stable pairs.\n` +
       `Max consecutive nights: ${MAX_CONSECUTIVE_NIGHTS}, max consecutive day shifts: ${MAX_CONSECUTIVE_DAY_SHIFTS}, ` +
       `no day shift straight after a night, max shifts: ${maxShifts} (${maxShifts * SHIFT_HOURS}h), ` +
-      `max days/week: ${MAX_DAYS_PER_WEEK}.` +
+      `max days/week: ${MAX_DAYS_PER_WEEK}, day/night imbalance <= ${dayNightImbalanceLimit(scheduledDays)}.` +
       `${dayInfo}`,
   );
 }
@@ -185,16 +197,21 @@ function generateAttempt(
 ): { days: ScheduleDay[] | null; error: string; failureDate: string } {
   const days: ScheduleDay[] = [];
   const state = createInitialState(weeks.length);
-  const weeklyPlans = buildWeeklyTeamPlans(random, weeks.length);
+  const weeklyPlans = buildWeeklyTeamPlans(random, weeks);
 
   for (const rotaWeek of weeks) {
     const week = rotaWeek.week;
     const plan = weeklyPlans[week - 1];
 
-    const dayPairPlan = buildPairPlan(plan.dayTeam, week, state, random);
-    const nightPairPlan = buildPairPlan(plan.nightTeam, week, state, random);
+    // Coming off last week's nights: one night blocks the next day shift,
+    // two consecutive nights block a third night.
+    const dayBlocked = new Set(PERSONNEL.filter((person) => state.consecutiveNights[person] > 0));
+    const nightBlocked = new Set(
+      PERSONNEL.filter((person) => state.consecutiveNights[person] >= MAX_CONSECUTIVE_NIGHTS),
+    );
 
-    const extraDayCandidates = shuffle([...plan.dayTeam], random);
+    const dayPairPlan = buildPairPlan(plan.dayTeam, state, random, dayBlocked, false);
+    const nightPairPlan = buildPairPlan(plan.nightTeam, state, random, nightBlocked, true);
 
     for (let weekdayIndex = 0; weekdayIndex < 7; weekdayIndex++) {
       const date = rotaWeek.dates[weekdayIndex];
@@ -215,10 +232,14 @@ function generateAttempt(
 
       const dayShift = [...chosenDayPair];
 
-      // Wednesdays require a third person on the day shift
+      // Wednesdays require a third person on the day shift; give it to the
+      // eligible teammate furthest behind on day shifts
       if (weekdayIndex === WEDNESDAY_INDEX) {
+        const extraCandidates = shuffle([...plan.dayTeam], random).sort(
+          (a, b) => state.dayShifts[a] - state.nightShifts[a] - (state.dayShifts[b] - state.nightShifts[b]),
+        );
         let extraAdded = false;
-        for (const extra of extraDayCandidates) {
+        for (const extra of extraCandidates) {
           if (dayShift.includes(extra)) {
             continue;
           }
@@ -279,21 +300,35 @@ function generateAttempt(
   return { days: null, error: "validation (one or more constraints violated)", failureDate: "" };
 }
 
-function buildWeeklyTeamPlans(random: () => number, weekCount: number): WeekTeamPlan[] {
-  const base = shuffle([...PERSONNEL], random);
+/**
+ * Splits the roster into a day team and night team for each week, balancing
+ * per person across the actual window. The old fixed stride-2 rotation only
+ * closed its cycle every 4 weeks, so 5/6-week month windows structurally gave
+ * some people far more day-weeks than night-weeks (or vice versa). Instead,
+ * track each person's day-minus-night load in active-day units (partial month
+ * edge weeks count for what they are actually worth) and put the four most
+ * night-heavy people on the day team each week; shuffling before the stable
+ * sort randomises tie-breaks so retries explore different splits.
+ */
+function buildWeeklyTeamPlans(random: () => number, weeks: RotaWeek[]): WeekTeamPlan[] {
+  const bias: PersonCounter = {};
+  for (const person of PERSONNEL) {
+    bias[person] = 0;
+  }
+
   const plans: WeekTeamPlan[] = [];
+  for (const rotaWeek of weeks) {
+    const activeDays = rotaWeek.dates.filter(Boolean).length;
+    const ordered = shuffle([...PERSONNEL], random).sort((a, b) => bias[a] - bias[b]);
+    const dayTeam = ordered.slice(0, 4);
+    const nightTeam = ordered.slice(4);
 
-  for (let weekIndex = 0; weekIndex < weekCount; weekIndex++) {
-    const start = (weekIndex * 2) % base.length;
-    const dayTeam = [
-      base[start],
-      base[(start + 1) % base.length],
-      base[(start + 2) % base.length],
-      base[(start + 3) % base.length],
-    ];
-
-    const daySet = new Set(dayTeam);
-    const nightTeam = base.filter((person) => !daySet.has(person));
+    for (const person of dayTeam) {
+      bias[person] += activeDays;
+    }
+    for (const person of nightTeam) {
+      bias[person] -= activeDays;
+    }
 
     plans.push({ dayTeam, nightTeam });
   }
@@ -301,21 +336,41 @@ function buildWeeklyTeamPlans(random: () => number, weekCount: number): WeekTeam
   return plans;
 }
 
-function buildPairPlan(team: string[], week: number, state: SolverState, random: () => number): PairPlan {
-  const ordered = [...team].sort((a, b) => state.totalShifts[a] - state.totalShifts[b]);
-  const pair1 = [ordered[0], ordered[1]];
-  const pair2 = [ordered[2], ordered[3]];
+function buildPairPlan(
+  team: string[],
+  state: SolverState,
+  random: () => number,
+  blocked: Set<string>,
+  isNight: boolean,
+): PairPlan {
+  // How far ahead this person already is on the shift type being planned;
+  // the most-behind people get the heavier primary role so day/night totals
+  // converge instead of drifting apart in 5/6-week windows.
+  const surplus = (person: string) =>
+    isNight
+      ? state.nightShifts[person] - state.dayShifts[person]
+      : state.dayShifts[person] - state.nightShifts[person];
 
-  const score1 =
-    state.totalShifts[pair1[0]] +
-    state.totalShifts[pair1[1]] +
-    state.weeklyShifts[pair1[0]][week - 1] +
-    state.weeklyShifts[pair1[1]][week - 1];
-  const score2 =
-    state.totalShifts[pair2[0]] +
-    state.totalShifts[pair2[1]] +
-    state.weeklyShifts[pair2[0]][week - 1] +
-    state.weeklyShifts[pair2[1]][week - 1];
+  // Members who cannot work the week's first day (fresh off last week's
+  // nights) must share a pair, otherwise both pairs are ineligible to open
+  // the week. The night shift holds 2 people, so there are at most 2.
+  const blockedMembers = team.filter((person) => blocked.has(person));
+
+  let pair1: string[];
+  let pair2: string[];
+  if (blockedMembers.length === 2) {
+    pair1 = blockedMembers;
+    pair2 = team.filter((person) => !blocked.has(person));
+  } else {
+    const ordered = shuffle([...team], random).sort(
+      (a, b) => surplus(a) - surplus(b) || state.totalShifts[a] - state.totalShifts[b],
+    );
+    pair1 = [ordered[0], ordered[1]];
+    pair2 = [ordered[2], ordered[3]];
+  }
+
+  const score1 = surplus(pair1[0]) + surplus(pair1[1]);
+  const score2 = surplus(pair2[0]) + surplus(pair2[1]);
 
   const primary = score1 <= score2 ? pair1 : pair2;
   const secondary = score1 <= score2 ? pair2 : pair1;
@@ -370,9 +425,11 @@ function applyShift(people: string[], week: number, state: SolverState, isNight:
     state.weeklyShifts[person][week - 1] += 1;
 
     if (isNight) {
+      state.nightShifts[person] += 1;
       state.consecutiveNights[person] += 1;
       state.consecutiveDayShifts[person] = 0;
     } else {
+      state.dayShifts[person] += 1;
       state.consecutiveNights[person] = 0;
       state.consecutiveDayShifts[person] += 1;
     }
@@ -380,13 +437,15 @@ function applyShift(people: string[], week: number, state: SolverState, isNight:
 }
 
 function validateSchedule(days: ScheduleDay[], weeks: RotaWeek[], maxShifts: number): boolean {
-  const personShiftCounts: PersonCounter = {};
+  const personDayCounts: PersonCounter = {};
+  const personNightCounts: PersonCounter = {};
   const personDaysPerWeek: PersonWeekCounter = {};
   const personConsecutiveNights: PersonCounter = {};
   const personConsecutiveDays: PersonCounter = {};
 
   for (const person of PERSONNEL) {
-    personShiftCounts[person] = 0;
+    personDayCounts[person] = 0;
+    personNightCounts[person] = 0;
     personDaysPerWeek[person] = Array(weeks.length).fill(0);
     personConsecutiveNights[person] = 0;
     personConsecutiveDays[person] = 0;
@@ -435,12 +494,12 @@ function validateSchedule(days: ScheduleDay[], weeks: RotaWeek[], maxShifts: num
     }
 
     for (const person of entry.dayShift) {
-      personShiftCounts[person] += 1;
+      personDayCounts[person] += 1;
       personDaysPerWeek[person][entry.week - 1] += 1;
     }
 
     for (const person of entry.nightShift) {
-      personShiftCounts[person] += 1;
+      personNightCounts[person] += 1;
       personDaysPerWeek[person][entry.week - 1] += 1;
     }
   }
@@ -487,7 +546,11 @@ function validateSchedule(days: ScheduleDay[], weeks: RotaWeek[], maxShifts: num
   }
 
   for (const person of PERSONNEL) {
-    if (personShiftCounts[person] > maxShifts) {
+    if (personDayCounts[person] + personNightCounts[person] > maxShifts) {
+      return false;
+    }
+
+    if (Math.abs(personDayCounts[person] - personNightCounts[person]) > dayNightImbalanceLimit(days.length)) {
       return false;
     }
 
@@ -503,13 +566,16 @@ function validateSchedule(days: ScheduleDay[], weeks: RotaWeek[], maxShifts: num
 
 function createInitialState(weekCount: number): SolverState {
   const totalShifts: PersonCounter = {};
+  const dayShifts: PersonCounter = {};
+  const nightShifts: PersonCounter = {};
   const weeklyShifts: PersonWeekCounter = {};
   const consecutiveNights: PersonCounter = {};
-
   const consecutiveDayShifts: PersonCounter = {};
 
   for (const person of PERSONNEL) {
     totalShifts[person] = 0;
+    dayShifts[person] = 0;
+    nightShifts[person] = 0;
     weeklyShifts[person] = Array(weekCount).fill(0);
     consecutiveNights[person] = 0;
     consecutiveDayShifts[person] = 0;
@@ -517,6 +583,8 @@ function createInitialState(weekCount: number): SolverState {
 
   return {
     totalShifts,
+    dayShifts,
+    nightShifts,
     weeklyShifts,
     consecutiveNights,
     consecutiveDayShifts,

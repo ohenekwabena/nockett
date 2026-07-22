@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   applyShiftOverrides,
+  dayNightImbalanceLimit,
   defaultRotaSeed,
   generateMonthSchedule,
   getScheduleStats,
@@ -21,7 +22,7 @@ import { Avatar, Btn, EmptyState, IconBtn, MIcon } from "@/components/nk/ui";
 
 const WD = ["M", "T", "W", "T", "F", "S", "S"];
 
-function buildConstraints(capHours: number): Array<{
+function buildConstraints(capHours: number, imbalanceLimit: number): Array<{
   icon: string;
   label: string;
   test: (stats: PersonScheduleStats) => boolean;
@@ -34,8 +35,8 @@ function buildConstraints(capHours: number): Array<{
     { icon: "timer", label: `Max ${capHours} hours this rota`, test: (s) => s.totalHours <= capHours },
     {
       icon: "balance",
-      label: "Balanced day / night distribution",
-      test: (s) => Math.abs(s.totalDayShifts - s.totalNightShifts) <= 3,
+      label: `Balanced day / night distribution (±${imbalanceLimit})`,
+      test: (s) => Math.abs(s.totalDayShifts - s.totalNightShifts) <= imbalanceLimit,
     },
   ];
 }
@@ -84,7 +85,8 @@ export default function SchedulesPage() {
   }, [base, overrides]);
 
   const capHours = (base.schedule?.maxShifts ?? 0) * SHIFT_HOURS;
-  const constraints = useMemo(() => buildConstraints(capHours), [capHours]);
+  const imbalanceLimit = dayNightImbalanceLimit(base.schedule?.scheduledDays ?? 0);
+  const constraints = useMemo(() => buildConstraints(capHours, imbalanceLimit), [capHours, imbalanceLimit]);
   const editedCount = Object.keys(overrides).length;
   const monthLabel = `${monthName(period.month)} ${period.year}`;
 

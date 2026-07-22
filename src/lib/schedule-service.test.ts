@@ -3,6 +3,7 @@ import {
   applyShiftOverrides,
   buildMonthWeeks,
   dateOrdinalLabel,
+  dayNightImbalanceLimit,
   defaultRotaSeed,
   generateMonthSchedule,
   getScheduleStats,
@@ -83,12 +84,15 @@ describe("generateMonthSchedule", () => {
       expect(stats[person].maxWeeklyDays).toBeLessThanOrEqual(4);
       expect(stats[person].totalHours).toBeLessThanOrEqual(maxShifts * SHIFT_HOURS);
       expect(stats[person].nightToDayViolations).toBe(0);
+      expect(Math.abs(stats[person].totalDayShifts - stats[person].totalNightShifts)).toBeLessThanOrEqual(
+        dayNightImbalanceLimit(scheduledDays),
+      );
     }
   });
 
-  it("keeps rest rules and Wednesday staffing across seeds", () => {
+  it("keeps rest rules, Wednesday staffing, and balance across seeds", () => {
     for (let seed = 1; seed <= 10; seed++) {
-      const { days, weeks } = generateMonthSchedule(2026, 7, seed * 7919);
+      const { days, weeks, scheduledDays } = generateMonthSchedule(2026, 7, seed * 7919);
       for (let i = 1; i < days.length; i++) {
         const overlap = days[i].dayShift.filter((person) => days[i - 1].nightShift.includes(person));
         expect(overlap).toEqual([]);
@@ -99,8 +103,17 @@ describe("generateMonthSchedule", () => {
       const stats = getScheduleStats(days, weeks.length);
       for (const person of PERSONNEL) {
         expect(stats[person].maxConsecutiveDayShifts).toBeLessThanOrEqual(3);
+        expect(Math.abs(stats[person].totalDayShifts - stats[person].totalNightShifts)).toBeLessThanOrEqual(
+          dayNightImbalanceLimit(scheduledDays),
+        );
       }
     }
+  });
+
+  it("scales the balance tolerance with the window length", () => {
+    expect(dayNightImbalanceLimit(28)).toBe(3);
+    expect(dayNightImbalanceLimit(33)).toBe(4);
+    expect(dayNightImbalanceLimit(37)).toBe(4);
   });
 
   it("is deterministic for a given seed", () => {
