@@ -1,100 +1,49 @@
 # Personnel Schedule Generator
 
 ## Overview
-Built an automated shift scheduling system for 8 personnel working 12-hour day/night rotations over a 4-week cycle.
+Automated shift scheduling for 8 personnel working 12-hour day/night rotations, anchored to a real calendar month (Monday-aligned weeks; the first week may be partial and the last week runs past month-end to its closing Sunday — e.g. July 2026 spans Wed 1st July to Sun 2nd August across 5 week blocks).
 
 ## Personnel
-- Jesse, Owusu, Lawrence, Baaba, Kwabena, Emma, Ella, Peter
+- Jesse, Owusu, Lawrence, Kwabena, Peter, Florence, Emmanuel, Emmanuella
 
 ## Shift Times
-- **Day Shift**: 7am - 7pm
-- **Night Shift**: 7pm - 7am
+- **Day Shift**: 7am - 7pm (2 people; 3 people every Wednesday)
+- **Night Shift**: 7pm - 7am (always 2 people)
 
 ## Constraints
-1. **No more than 2 consecutive night shifts** - No person works night shifts on more than 2 consecutive days
-2. **At least 1 week of day shifts** - Every person is guaranteed to have at least one full week (7 days) of day shifts
-3. **4 per shift** - Each day has exactly 4 people on day shift and 4 on night shift
+1. **No more than 2 consecutive night shifts**
+2. **No more than 3 consecutive day shifts**
+3. **No day shift straight after a night shift** — a night ends 7am and the day shift starts 7am the same morning, so the transition would mean zero rest
+4. **Wednesday staffing** — exactly 3 on the day shift on Wednesdays, exactly 2 every other day
+5. **Max 4 working days per person per week**
+6. **Shift cap pro-rated to the window** — the 180h/28-day baseline scales with the number of scheduled days (`maxShiftsForDays`), since 24/7 cover for 8 people over a 31+ day month cannot fit under a flat 180h
+7. **Balanced day/night split** — per person, |day shifts − night shifts| ≤ 3 in a 4-week window, ≤ 4 in longer windows (`dayNightImbalanceLimit`). Weeks are assigned whole, so in 5/6-week windows half the roster necessarily gets one more day-week than night-weeks; the weekly team builder balances day/night load greedily and the pair planner hands the heavier 4-day role to whoever is behind on that shift type
+8. **Stable pairs** — each week splits the 4-person day team and 4-person night team into two pairs that alternate across the week; people rest-blocked for the week's first day (fresh off the previous Sunday's night) are paired together so the other pair can open the week
 
 ## Files
-- `src/lib/schedule-service.ts` - Core scheduling algorithm and utilities
-- `src/components/cards/schedule-viewer-card.tsx` - React component for displaying the schedule
-- `src/app/schedules/page.tsx` - Schedule page
+- `src/lib/schedule-service.ts` — month layout (`buildMonthWeeks`), solver (`generateMonthSchedule`), stats (`getScheduleStats`), manual edits (`applyShiftOverrides`)
+- `src/lib/schedule-export.ts` — Excel export in the published-roster layout (`buildRotaWorkbook` + `exportRotaToExcel`)
+- `src/app/schedules/page.tsx` — schedule page (month navigation, editable grid, download)
 
-## How It Works
+## Behaviour
 
-### Algorithm
-The scheduling system uses a constraint-satisfaction approach:
+### Generation
+Constraint-satisfaction with retries: weekly team plans → pair plans with day patterns → per-day assignment → full validation. Deterministic for a given `(year, month, seed)`; the page seeds each month with `defaultRotaSeed` and Regenerate rerolls the seed.
 
-1. **Distribution Phase**: Pre-assigns each person to specific weeks for day shifts
-   - Ensures balanced distribution across all 4 weeks
-   - Guarantees every person gets assigned day shifts
+### Manual edits (admin only)
+Admins click any cell in the rota grid to cycle Off → Day → Night → Off. Edits are stored as overrides on top of the generated rota (`applyShiftOverrides`), marked with a dot in the grid, and feed directly into the per-person stats — total hours and hours-per-week update live. "Reset edits" restores the generated rota; Regenerate and month changes clear edits.
 
-2. **Generation Phase**: For each day of the schedule:
-   - Assigns 4 staff to day shift based on pre-plan
-   - Assigns 4 staff to night shift
-   - Respects the 2-consecutive-night constraint
+### Download
+The Download button builds an .xlsx matching the published paper roster exactly: "July, 2026" title; per-week blocks with a bold ordinal date row (`1st July` … `2nd August`), a navy weekday band, a merged `WEEK n` label, and DAY (7am - 7pm) / NIGHT (7pm - 7am) rows with names joined by " / ". The export reflects manual edits, not just the generated rota.
 
-3. **Validation Phase**: Checks if generated schedule meets all constraints
-   - Retries up to 10 times with different distributions
-   - Returns best valid schedule
+### Stats
+Per person: total day/night shifts, total hours vs the pro-rated cap, hours per rota week, max consecutive nights, max days in any week — plus per-person and global constraint pass/fail.
 
-## API Reference
-
-### `generateSchedule(): ScheduleData[]`
-Generates a complete 4-week shift schedule respecting all constraints.
-
-**Returns**: Array of 28 ScheduleData objects (one per day)
-
-### `formatScheduleForDisplay(schedule: ScheduleData[]): object`
-Formats the schedule for easy display in tables/UI.
-
-**Returns**: Object grouped by week and day
-
-### `getScheduleStats(schedule: ScheduleData[]): object`
-Calculates statistics for each person:
-- Total day shifts
-- Total night shifts
-- Number of weeks with day shifts
-- Maximum consecutive night shifts
-
-## Usage
-
-```typescript
-import { generateSchedule, getScheduleStats } from "@/lib/schedule-service";
-
-// Generate schedule
-const schedule = generateSchedule();
-
-// Get statistics
-const stats = getScheduleStats(schedule);
-
-// View schedule by week/day
-const formatted = formatScheduleForDisplay(schedule);
-```
-
-## Display Component
-
-The `ScheduleViewerCard` component displays:
-- 4-week calendar-style table
-- Personnel assigned to each shift
-- Regenerate button for new schedules
-- Statistics table with constraint compliance indicators
-- Constraint information panel
-
-## Types
-
-```typescript
-export interface ScheduleData {
-  week: number;
-  day: DayOfWeek;
-  dayShift: string[];
-  nightShift: string[];
-}
-```
+## Tests
+- `src/lib/schedule-service.test.ts` — month layout across start-days (Wed/Sat/Sun/Mon), solver validity, determinism, stats, overrides
+- `src/lib/schedule-export.test.ts` — workbook structure matches the roster layout
 
 ## Future Enhancements
-- Add ability to save schedules to database
-- Add UI to modify or override specific shifts
+- Save schedules (and manual edits) to the database
 - Email notifications for personnel about their schedule
-- Preference/availability management
-- Vacation/time-off handling
+- Preference/availability and vacation handling
