@@ -1325,6 +1325,9 @@ select.input {
   padding: 3px 6px;
   border-radius: 7px;
   margin-left: -6px;
+  /* Buttons default to text-align:center; keep wrapped values (e.g. long link
+     names) left-aligned like every other property value. */
+  text-align: left;
 }
 .inline-sel-btn:hover {
   background: color-mix(in oklab, var(--ink) 5%, transparent);
@@ -1481,6 +1484,23 @@ a.attach-name:hover {
   border-radius: 12px;
   padding: 15px 16px;
   background: var(--panel);
+  /* Rendered as a <button> so the whole card deep-links into the filtered
+     ticket queue: reset the UA button chrome and add a hover affordance. */
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.kpi-card:hover {
+  border-color: var(--hair2);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.kpi-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .kpi-ic {
   width: 38px;
@@ -1776,6 +1796,57 @@ a.attach-name:hover {
 }
 .rota-next {
   color: var(--faint);
+}
+.rota-download {
+  position: relative;
+  display: inline-flex;
+}
+.rota-download-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.hist-empty {
+  padding: 14px 10px;
+  font-size: 12.5px;
+  color: var(--dim);
+  text-align: center;
+}
+.hist-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.hist-load {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 6px 9px;
+  border-radius: 7px;
+}
+.hist-load:hover {
+  background: color-mix(in oklab, var(--ink) 4%, transparent);
+}
+.hist-label {
+  max-width: 100%;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hist-meta {
+  font-size: 11px;
+  color: var(--dim);
 }
 .cell-btn {
   background: none;

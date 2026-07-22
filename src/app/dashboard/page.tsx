@@ -80,11 +80,32 @@ export default function Dashboard() {
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  // Each card deep-links into the ticket queue with the matching filter
+  // pre-applied (tickets page reads ?status= / ?priority=). "Total" clears out
+  // to the unfiltered queue.
   const kpis = [
-    { label: "Total tickets", value: stats.total, icon: "confirmation_number", ...KPI_TINTS.total },
-    { label: "Open", value: stats.open, icon: "radio_button_unchecked", ...KPI_TINTS.open },
-    { label: "In Progress", value: stats.inProgress, icon: "clock_loader_40", ...KPI_TINTS.progress },
-    { label: "High priority", value: stats.highPriority, icon: "priority_high", ...KPI_TINTS.high },
+    { label: "Total tickets", value: stats.total, icon: "confirmation_number", ...KPI_TINTS.total, href: "/tickets" },
+    {
+      label: "Open",
+      value: stats.open,
+      icon: "radio_button_unchecked",
+      ...KPI_TINTS.open,
+      href: "/tickets?status=OPEN",
+    },
+    {
+      label: "In Progress",
+      value: stats.inProgress,
+      icon: "clock_loader_40",
+      ...KPI_TINTS.progress,
+      href: "/tickets?status=IN_PROGRESS",
+    },
+    {
+      label: "High priority",
+      value: stats.highPriority,
+      icon: "priority_high",
+      ...KPI_TINTS.high,
+      href: "/tickets?priority=HIGH",
+    },
   ];
 
   if (loading) {
@@ -119,7 +140,13 @@ export default function Dashboard() {
 
       <div className="kpi-grid">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className="kpi-card">
+          <button
+            key={kpi.label}
+            type="button"
+            className="kpi-card"
+            onClick={() => router.push(kpi.href)}
+            title={`View ${kpi.label.toLowerCase()} tickets`}
+          >
             <span
               className="kpi-ic"
               style={
@@ -137,7 +164,7 @@ export default function Dashboard() {
               <span className="kpi-v">{kpi.value}</span>
               <span className="kpi-l">{kpi.label}</span>
             </span>
-          </div>
+          </button>
         ))}
       </div>
 

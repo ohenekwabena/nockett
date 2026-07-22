@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   applyShiftOverrides,
@@ -17,8 +17,26 @@ import {
   type ShiftValue,
 } from "@/lib/schedule-service";
 import { exportRotaToExcel } from "@/lib/schedule-export";
+import { exportRotaToImage, exportRotaToPdf } from "@/lib/schedule-image-export";
+import {
+  deleteSchedule,
+  listSchedules,
+  saveSchedule,
+  type SavedSchedule,
+} from "@/lib/schedule-history-service";
 import { useAuth } from "@/context/auth-context";
-import { Avatar, Btn, EmptyState, IconBtn, MIcon } from "@/components/nk/ui";
+import {
+  Avatar,
+  Btn,
+  ConfirmDialog,
+  EmptyState,
+  Field,
+  fmtDate,
+  IconBtn,
+  MIcon,
+  Modal,
+  Popover,
+} from "@/components/nk/ui";
 
 const WD = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -58,11 +76,26 @@ function ShiftChip({ value }: { value: ShiftValue }) {
 }
 
 export default function SchedulesPage() {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const today = new Date();
   const [period, setPeriod] = useState({ year: today.getFullYear(), month: today.getMonth() + 1 });
   const [seed, setSeed] = useState(() => defaultRotaSeed(today.getFullYear(), today.getMonth() + 1));
   const [overrides, setOverrides] = useState<Record<string, ShiftValue>>({});
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  // Regenerating, changing month, or loading a saved rota all throw away the
+  // current view (and any manual edits), so each routes through a confirmation
+  // that also offers to save the current rota to history first.
+  const [confirmAction, setConfirmAction] = useState<
+    { kind: "regenerate" } | { kind: "month"; delta: number } | { kind: "load"; schedule: SavedSchedule } | null
+  >(null);
+  const [history, setHistory] = useState<SavedSchedule[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveLabel, setSaveLabel] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SavedSchedule | null>(null);
+  const downloadBtn = useRef<HTMLButtonElement>(null);
+  const historyBtn = useRef<HTMLButtonElement>(null);
 
   const base = useMemo(() => {
     try {
@@ -88,6 +121,7 @@ export default function SchedulesPage() {
   const imbalanceLimit = dayNightImbalanceLimit(base.schedule?.scheduledDays ?? 0);
   const constraints = useMemo(() => buildConstraints(capHours, imbalanceLimit), [capHours, imbalanceLimit]);
   const editedCount = Object.keys(overrides).length;
+  const editCountLabel = `${editedCount} manual edit${editedCount === 1 ? "" : "s"}`;
   const monthLabel = `${monthName(period.month)} ${period.year}`;
 
   function shiftPeriod(delta: number) {
@@ -96,6 +130,99 @@ export default function SchedulesPage() {
     setPeriod(value);
     setSeed(defaultRotaSeed(value.year, value.month));
     setOverrides({});
+  }
+
+  /** "August 2026" for the month `delta` steps from the current period. */
+  function periodLabel(delta: number): string {
+    const next = new Date(Date.UTC(period.year, period.month - 1 + delta, 1));
+    return `${monthName(next.getUTCMonth() + 1)} ${next.getUTCFullYear()}`;
+  }
+
+  function regenerate() {
+    setSeed(Math.floor(Math.random() * 1e9));
+    setOverrides({});
+    toast.success("Generated a new valid rota");
+  }
+
+  const scheduleTitle = (schedule: SavedSchedule) =>
+    schedule.label || `${monthName(schedule.month)} ${schedule.year}`;
+
+  function loadSchedule(schedule: SavedSchedule) {
+    setPeriod({ year: schedule.year, month: schedule.month });
+    setSeed(Number(schedule.seed));
+    setOverrides((schedule.overrides as Record<string, ShiftValue>) ?? {});
+    toast.success(`Loaded “${scheduleTitle(schedule)}”`);
+  }
+
+  const refreshHistory = useCallback(async () => {
+    try {
+      setHistory(await listSchedules());
+    } catch (error) {
+      console.error("Error loading schedule history:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshHistory();
+  }, [refreshHistory]);
+
+  /** Persist the current rota; returns whether it saved so callers can chain. */
+  async function persistCurrent(label: string): Promise<boolean> {
+    setSaving(true);
+    try {
+      await saveSchedule({
+        year: period.year,
+        month: period.month,
+        seed,
+        overrides,
+        label,
+        createdBy: user?.id ?? null,
+      });
+      await refreshHistory();
+      toast.success("Saved to history");
+      return true;
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      toast.error("Could not save the schedule");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveConfirm() {
+    if (await persistCurrent(saveLabel)) setSaveOpen(false);
+  }
+
+  function requestLoad(schedule: SavedSchedule) {
+    setHistoryOpen(false);
+    // Loading over unsaved manual edits is destructive; otherwise just load.
+    if (editedCount > 0) setConfirmAction({ kind: "load", schedule });
+    else loadSchedule(schedule);
+  }
+
+  // `save` first persists the current rota (used by the modal's "Save & continue").
+  async function runConfirmAction(save: boolean) {
+    if (!confirmAction) return;
+    if (save && !(await persistCurrent(monthLabel))) return;
+    if (confirmAction.kind === "regenerate") regenerate();
+    else if (confirmAction.kind === "month") shiftPeriod(confirmAction.delta);
+    else loadSchedule(confirmAction.schedule);
+    setConfirmAction(null);
+  }
+
+  async function handleDeleteSchedule() {
+    if (!deleteTarget) return;
+    try {
+      await deleteSchedule(deleteTarget.id);
+      await refreshHistory();
+      toast.success("Removed from history");
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      toast.error("Could not delete the schedule");
+    } finally {
+      setDeleteTarget(null);
+    }
   }
 
   function cycleCell(person: string, date: string) {
@@ -115,18 +242,22 @@ export default function SchedulesPage() {
     });
   }
 
-  async function handleDownload() {
+  async function handleDownload(format: "xlsx" | "pdf" | "png") {
     if (!base.schedule || !rota) return;
+    setDownloadOpen(false);
+    const payload = {
+      year: period.year,
+      month: period.month,
+      weeks: base.schedule.weeks,
+      days: rota.days,
+    };
     try {
-      await exportRotaToExcel({
-        year: period.year,
-        month: period.month,
-        weeks: base.schedule.weeks,
-        days: rota.days,
-      });
+      if (format === "xlsx") await exportRotaToExcel(payload);
+      else if (format === "pdf") await exportRotaToPdf(payload);
+      else await exportRotaToImage(payload);
       toast.success(`Downloaded ${monthLabel} rota`);
     } catch {
-      toast.error("Could not build the rota spreadsheet");
+      toast.error("Could not build the rota file");
     }
   }
 
@@ -152,6 +283,32 @@ export default function SchedulesPage() {
     (day) => day.dayShift.length === (day.weekdayIndex === 2 ? 3 : 2) && day.nightShift.length === 2,
   );
 
+  // View-model for the "this replaces the current rota" confirmation, shared by
+  // regenerate / month-switch / load-from-history.
+  const confirmView = !confirmAction
+    ? null
+    : confirmAction.kind === "regenerate"
+      ? {
+          title: "Regenerate schedule?",
+          body: `This builds a brand-new random rota for ${monthLabel}${
+            editedCount > 0 ? ` and discards your ${editCountLabel}` : ""
+          }.`,
+          proceed: "Regenerate",
+        }
+      : confirmAction.kind === "month"
+        ? {
+            title: `Switch to ${periodLabel(confirmAction.delta)}?`,
+            body: `The ${monthLabel} rota${
+              editedCount > 0 ? ` and its ${editCountLabel}` : ""
+            } will be replaced by a fresh ${periodLabel(confirmAction.delta)} rota.`,
+            proceed: "Switch month",
+          }
+        : {
+            title: `Load “${scheduleTitle(confirmAction.schedule)}”?`,
+            body: `Loading this saved rota replaces the current ${monthLabel} view and discards your ${editCountLabel}.`,
+            proceed: "Load rota",
+          };
+
   return (
     <div className="page">
       <div className="page-head">
@@ -161,9 +318,17 @@ export default function SchedulesPage() {
         </div>
         <div className="page-actions">
           <span className="rota-month">
-            <IconBtn icon="chevron_left" title="Previous month" onClick={() => shiftPeriod(-1)} />
+            <IconBtn
+              icon="chevron_left"
+              title="Previous month"
+              onClick={() => setConfirmAction({ kind: "month", delta: -1 })}
+            />
             <span className="rota-month-label">{monthLabel}</span>
-            <IconBtn icon="chevron_right" title="Next month" onClick={() => shiftPeriod(1)} />
+            <IconBtn
+              icon="chevron_right"
+              title="Next month"
+              onClick={() => setConfirmAction({ kind: "month", delta: 1 })}
+            />
           </span>
           {editedCount > 0 && (
             <Btn
@@ -178,18 +343,120 @@ export default function SchedulesPage() {
               Reset {editedCount} edit{editedCount === 1 ? "" : "s"}
             </Btn>
           )}
-          <Btn small icon="download" onClick={handleDownload}>
-            Download
-          </Btn>
+          {isAdmin && (
+            <Btn
+              small
+              icon="bookmark_add"
+              title="Save the current rota to history"
+              onClick={() => {
+                setSaveLabel(monthLabel);
+                setSaveOpen(true);
+              }}
+            >
+              Save
+            </Btn>
+          )}
+          <span className="rota-download">
+            <button
+              ref={historyBtn}
+              type="button"
+              className="btn btn-ghost btn-sm"
+              aria-haspopup="menu"
+              aria-expanded={historyOpen}
+              onClick={() => setHistoryOpen((open) => !open)}
+            >
+              <MIcon name="history" size={15} weight={500} />
+              History
+              {history.length > 0 && <span className="seg-count">{history.length}</span>}
+              <MIcon name="expand_more" size={15} className="dim" />
+            </button>
+            <Popover
+              open={historyOpen}
+              onClose={() => setHistoryOpen(false)}
+              anchor={historyBtn}
+              align="right"
+              width={300}
+              fixed
+            >
+              {history.length === 0 ? (
+                <div className="hist-empty">No saved schedules yet.</div>
+              ) : (
+                history.map((schedule) => (
+                  <div key={schedule.id} className="hist-item">
+                    <button
+                      type="button"
+                      className="hist-load"
+                      title={`Load “${scheduleTitle(schedule)}”`}
+                      onClick={() => requestLoad(schedule)}
+                    >
+                      <span className="hist-label">{scheduleTitle(schedule)}</span>
+                      <span className="hist-meta">
+                        {monthName(schedule.month)} {schedule.year} · saved {fmtDate(schedule.created_at)}
+                      </span>
+                    </button>
+                    {isAdmin && (
+                      <IconBtn
+                        icon="delete"
+                        size={14}
+                        title="Delete from history"
+                        onClick={() => {
+                          setHistoryOpen(false);
+                          setDeleteTarget(schedule);
+                        }}
+                      />
+                    )}
+                  </div>
+                ))
+              )}
+            </Popover>
+          </span>
+          <span className="rota-download">
+            <button
+              ref={downloadBtn}
+              type="button"
+              className="btn btn-ghost btn-sm"
+              aria-haspopup="menu"
+              aria-expanded={downloadOpen}
+              onClick={() => setDownloadOpen((open) => !open)}
+            >
+              <MIcon name="download" size={15} weight={500} />
+              Download
+              <MIcon name="expand_more" size={15} className="dim" />
+            </button>
+            <Popover
+              open={downloadOpen}
+              onClose={() => setDownloadOpen(false)}
+              anchor={downloadBtn}
+              align="right"
+              minWidth={188}
+              fixed
+            >
+              {(
+                [
+                  { format: "xlsx", icon: "table_view", label: "Excel (.xlsx)" },
+                  { format: "pdf", icon: "picture_as_pdf", label: "PDF (.pdf)" },
+                  { format: "png", icon: "image", label: "Image (.png)" },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.format}
+                  type="button"
+                  className="pop-item"
+                  onClick={() => handleDownload(item.format)}
+                >
+                  <span className="rota-download-item">
+                    <MIcon name={item.icon} size={16} className="dim" />
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </Popover>
+          </span>
           <Btn
             kind="primary"
             small
             icon="casino"
-            onClick={() => {
-              setSeed(Math.floor(Math.random() * 1e9));
-              setOverrides({});
-              toast.success("Generated a new valid rota");
-            }}
+            onClick={() => setConfirmAction({ kind: "regenerate" })}
           >
             Regenerate
           </Btn>
@@ -338,6 +605,74 @@ export default function SchedulesPage() {
           );
         })}
       </div>
+
+      <Modal
+        open={confirmAction != null}
+        onClose={() => setConfirmAction(null)}
+        title={confirmView?.title ?? ""}
+        width={430}
+        footer={
+          <div className="row-end">
+            <Btn kind="ghost" onClick={() => setConfirmAction(null)}>
+              Cancel
+            </Btn>
+            {isAdmin && (
+              <Btn kind="ghost" icon="bookmark_add" disabled={saving} onClick={() => runConfirmAction(true)}>
+                {saving ? "Saving…" : "Save & continue"}
+              </Btn>
+            )}
+            <Btn kind="primary" disabled={saving} onClick={() => runConfirmAction(false)}>
+              {confirmView?.proceed ?? "Continue"}
+            </Btn>
+          </div>
+        }
+      >
+        <p className="dim" style={{ margin: 0 }}>
+          {confirmView?.body}
+        </p>
+      </Modal>
+
+      <Modal
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        title="Save schedule to history"
+        width={430}
+        footer={
+          <div className="row-end">
+            <Btn kind="ghost" onClick={() => setSaveOpen(false)}>
+              Cancel
+            </Btn>
+            <Btn kind="primary" icon="bookmark_add" disabled={saving} onClick={handleSaveConfirm}>
+              {saving ? "Saving…" : "Save to history"}
+            </Btn>
+          </div>
+        }
+      >
+        <Field label="Name">
+          <input
+            className="input"
+            value={saveLabel}
+            autoFocus
+            placeholder={monthLabel}
+            onChange={(event) => setSaveLabel(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleSaveConfirm();
+            }}
+          />
+        </Field>
+        <p className="dim" style={{ marginTop: 10, fontSize: 12.5 }}>
+          Snapshots the current {monthLabel} rota{editedCount > 0 ? ` with your ${editCountLabel}` : ""} so you can
+          reload it from History later.
+        </p>
+      </Modal>
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        onClose={() => setDeleteTarget(null)}
+        title={`Delete “${deleteTarget ? scheduleTitle(deleteTarget) : ""}”?`}
+        body="This removes the saved schedule from history. It can't be undone."
+        onConfirm={handleDeleteSchedule}
+      />
     </div>
   );
 }

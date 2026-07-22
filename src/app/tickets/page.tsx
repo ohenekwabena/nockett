@@ -74,6 +74,9 @@ export default function TicketsPage() {
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   // Deep-link target from an email "View ticket" link (/tickets?ticket=<id>).
   const [deepLinkKey, setDeepLinkKey] = useState<string | null>(null);
+  // Priority deep-link from a dashboard KPI card, held until the priority
+  // options load so it can resolve to the exact stored option name.
+  const [pendingPriority, setPendingPriority] = useState<string | null>(null);
   const filterBtn = useRef<HTMLSpanElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,6 +101,41 @@ export default function TicketsPage() {
     const key = new URLSearchParams(window.location.search).get("ticket");
     if (key) setDeepLinkKey(key);
   }, []);
+
+  // Filter deep-link from a dashboard KPI card (/tickets?status=OPEN,
+  // ?priority=HIGH). Apply status immediately (fixed enum); defer priority until
+  // its options load. Strip the params so a refresh/back doesn't re-apply them.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const statusParam = params.get("status");
+    const priorityParam = params.get("priority");
+    if (!statusParam && !priorityParam) return;
+
+    const status = (statusParam || "").toUpperCase();
+    if (STATUS_ORDER.includes(status as (typeof STATUS_ORDER)[number])) {
+      setFilters((previous) => ({ ...previous, status: [status] }));
+    }
+    if (priorityParam) setPendingPriority(priorityParam);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("status");
+    url.searchParams.delete("priority");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }, []);
+
+  // Resolve a pending priority deep-link case-insensitively against the loaded
+  // option names, so the KPI card's ?priority=HIGH matches however the priority
+  // is actually stored ("High", "HIGH", …).
+  useEffect(() => {
+    if (!pendingPriority || priorityOptions.length === 0) return;
+    // Canonicalise against the loaded names; fall back to the raw value so an
+    // unknown priority filters to an empty result rather than to all tickets.
+    const match = priorityOptions.find((name) => name.toLowerCase() === pendingPriority.toLowerCase()) ?? pendingPriority;
+    setFilters((previous) =>
+      previous.priority.includes(match) ? previous : { ...previous, priority: [...previous.priority, match] },
+    );
+    setPendingPriority(null);
+  }, [pendingPriority, priorityOptions]);
 
   const panelApi = useMemo(
     () => ({ update: updateTicketWithOptimism, remove: deleteTicketWithOptimism }),

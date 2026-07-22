@@ -122,6 +122,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      schedules: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          label: string | null;
+          month: number;
+          overrides: Json;
+          seed: number;
+          year: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          label?: string | null;
+          month: number;
+          overrides?: Json;
+          seed: number;
+          year: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          label?: string | null;
+          month?: number;
+          overrides?: Json;
+          seed?: number;
+          year?: number;
+        };
+        Relationships: [];
+      };
       ticket_attachments: {
         Row: {
           created_at: string | null;
