@@ -1534,6 +1534,14 @@ a.attach-name:hover {
   flex-wrap: wrap;
   align-items: center;
 }
+.ent-preview .chip {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ent-add {
   display: flex;
   gap: 8px;
@@ -1560,8 +1568,10 @@ a.attach-name:hover {
 }
 .ent-name {
   flex: 1;
+  min-width: 0;
   font-size: 12.8px;
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 .ent-actions {
   display: flex;
