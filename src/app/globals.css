@@ -72,6 +72,48 @@ body {
   direction: ltr;
   -webkit-font-feature-settings: "liga";
 }
+/* Full-screen loading gate shown until the Material Symbols font is ready
+   (see components/shell/font-gate.tsx) so icons never flash as raw text. */
+.font-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--canvas);
+  color: var(--dim);
+}
+.font-gate-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 20px;
+}
+.font-gate-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid color-mix(in oklab, var(--ink) 12%, transparent);
+  border-top-color: var(--accent);
+  animation: font-gate-spin 0.7s linear infinite;
+}
+.font-gate-label {
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+}
+@keyframes font-gate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .font-gate-spinner {
+    animation-duration: 1.6s;
+  }
+}
 .dim {
   color: var(--dim);
 }
