@@ -1302,6 +1302,47 @@ select.input {
     animation: none;
   }
 }
+/* Expanded ticket panel — the expand icon in the panel header promotes the
+   side panel into a centered modal (components/tickets/ticket-panel.tsx). */
+.dp-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 88;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 16px;
+  background: rgba(12, 14, 24, 0.4);
+  backdrop-filter: blur(2px);
+  animation: dp-veil-in 0.15s ease;
+}
+@keyframes dp-veil-in {
+  from {
+    opacity: 0;
+  }
+}
+.detail-panel.dp-expanded {
+  position: relative;
+  inset: auto;
+  width: 780px;
+  max-width: 94vw;
+  height: 92vh;
+  max-height: 92vh;
+  box-shadow: var(--shadow);
+  animation: dp-expand-in 0.18s ease;
+}
+@keyframes dp-expand-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-veil,
+  .detail-panel.dp-expanded {
+    animation: none;
+  }
+}
 .dp-head {
   display: flex;
   align-items: center;

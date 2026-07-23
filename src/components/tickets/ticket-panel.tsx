@@ -184,6 +184,7 @@ export function TicketPanel() {
   const [confirmAttachment, setConfirmAttachment] = useState<TicketAttachment | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ticketId: string | undefined = panelTicket?.id;
@@ -366,14 +367,20 @@ export function TicketPanel() {
 
   const names = (list: Array<{ name: string }>) => list.map((item) => item.name);
 
-  return (
-    <aside className="detail-panel">
+  const panel = (
+    <aside className={"detail-panel" + (expanded ? " dp-expanded" : "")}>
       <div className="dp-head">
         <span className="tk-num">{local.ticket_id || ticketId.slice(0, 8)}</span>
         <span className="dp-head-actions">
           <Btn small icon="ios_share" onClick={handleShare}>
             Share
           </Btn>
+          <IconBtn
+            icon={expanded ? "close_fullscreen" : "open_in_full"}
+            size={16}
+            title={expanded ? "Collapse to side panel" : "Expand to full view"}
+            onClick={() => setExpanded((value) => !value)}
+          />
           {isAdmin && (
             <IconBtn icon="delete" title="Delete ticket (admin)" onClick={() => setConfirmDelete(true)} />
           )}
@@ -833,5 +840,18 @@ export function TicketPanel() {
         onConfirm={handleDeleteTicket}
       />
     </aside>
+  );
+
+  // Expanded = the same panel promoted into a centered modal over a dimmed veil.
+  // Clicking the veil (but not the panel) collapses back to the side panel.
+  return expanded ? (
+    <div
+      className="dp-veil"
+      onMouseDown={(event) => event.target === event.currentTarget && setExpanded(false)}
+    >
+      {panel}
+    </div>
+  ) : (
+    panel
   );
 }
