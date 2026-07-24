@@ -8,6 +8,14 @@ import { MIcon } from "@/components/nk/ui";
 export function AuthFrame({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className="auth-wrap">
+      <div className="auth-bg" aria-hidden="true">
+        <img src="/background-svgs/undraw_collaboration_dtwk.svg" alt="" className="auth-bg-1" />
+        <img src="/background-svgs/undraw_device-sync_d9ei.svg" alt="" className="auth-bg-2" />
+        <img src="/background-svgs/undraw_online-community_3o0l.svg" alt="" className="auth-bg-3" />
+        <img src="/background-svgs/undraw_email-campaign_2z6t.svg" alt="" className="auth-bg-4" />
+        <img src="/background-svgs/undraw_collaboration_dtwk.svg" alt="" className="auth-bg-5" />
+        <img src="/background-svgs/undraw_device-sync_d9ei.svg" alt="" className="auth-bg-6" />
+      </div>
       <div className="auth-card" style={wide ? { width: 480 } : undefined}>
         <div className="auth-brand">
           <span className="ws-logo">N</span>

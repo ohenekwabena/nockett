@@ -2382,6 +2382,8 @@ a.attach-name:hover {
 
 /* ---------- auth ---------- */
 .auth-wrap {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -2390,7 +2392,77 @@ a.attach-name:hover {
   gap: 18px;
   padding: 24px;
 }
+/* Blurred illustration backdrop (restored from pre-redesign auth screens). */
+.auth-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-bg img {
+  position: absolute;
+}
+.auth-bg-1 {
+  top: -40px;
+  left: -40px;
+  width: 256px;
+  height: 256px;
+  opacity: 0.3;
+  filter: blur(4px);
+  transform: rotate(12deg);
+}
+.auth-bg-2 {
+  top: -80px;
+  right: -80px;
+  width: 288px;
+  height: 288px;
+  opacity: 0.25;
+  filter: blur(4px);
+  transform: rotate(-45deg);
+}
+.auth-bg-3 {
+  bottom: -64px;
+  left: -64px;
+  width: 320px;
+  height: 320px;
+  opacity: 0.3;
+  filter: blur(4px);
+  transform: rotate(-12deg);
+}
+.auth-bg-4 {
+  bottom: -40px;
+  right: -40px;
+  width: 240px;
+  height: 240px;
+  opacity: 0.25;
+  filter: blur(4px);
+  transform: rotate(45deg);
+}
+.auth-bg-5 {
+  top: 50%;
+  right: -128px;
+  width: 384px;
+  height: 384px;
+  opacity: 0.2;
+  filter: blur(12px);
+  transform: translateY(-50%) rotate(90deg);
+}
+.auth-bg-6 {
+  top: 33.333%;
+  left: -96px;
+  width: 288px;
+  height: 288px;
+  opacity: 0.2;
+  filter: blur(12px);
+  transform: rotate(-90deg);
+}
+.dark .auth-bg {
+  opacity: 0.7;
+}
 .auth-card {
+  position: relative;
+  z-index: 1;
   width: 400px;
   max-width: 94vw;
   background: var(--panel);
@@ -2427,6 +2499,8 @@ a.attach-name:hover {
   font-size: 12.5px;
 }
 .auth-foot {
+  position: relative;
+  z-index: 1;
   font-size: 12px;
 }
 .auth-demo {
