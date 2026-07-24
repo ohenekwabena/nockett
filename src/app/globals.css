@@ -1080,6 +1080,187 @@ button.chip {
   font-weight: 600;
 }
 
+/* ---------- calendar (DateField) ---------- */
+.date-wrap {
+  display: inline-block;
+}
+.date-btn {
+  min-width: 140px;
+}
+.cal {
+  width: 250px;
+  user-select: none;
+}
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.cal-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: none;
+  border-radius: 7px;
+  color: var(--dim);
+  cursor: pointer;
+}
+.cal-nav:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--ink) 6%, transparent);
+  color: var(--ink);
+}
+.cal-nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.cal-my {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12.8px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 7px;
+}
+.cal-my:hover {
+  background: color-mix(in oklab, var(--ink) 6%, transparent);
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-dow {
+  margin-bottom: 4px;
+}
+.cal-dow-c {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+  text-transform: uppercase;
+  padding: 2px 0;
+}
+.cal-day {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 0;
+  background: none;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.cal-day:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--ink) 6%, transparent);
+}
+.cal-day.out {
+  color: var(--faint);
+}
+.cal-day.today {
+  font-weight: 700;
+}
+.cal-day.today::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.cal-day.focus {
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+.cal-day.on {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.cal-day.on::after {
+  background: #fff;
+}
+.cal-day:focus-visible {
+  outline: none;
+}
+.cal-day:disabled {
+  color: var(--faint);
+  opacity: 0.4;
+  cursor: default;
+}
+.cal-months,
+.cal-years {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding-top: 2px;
+}
+.cal-cell {
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.cal-cell:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--ink) 6%, transparent);
+}
+.cal-cell.on {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.cal-cell:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cal-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hair);
+}
+.cal-link {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 11.8px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 6px;
+}
+.cal-link:hover:not(:disabled) {
+  background: var(--accent-softer);
+}
+.cal-link:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
 /* ---------- modal ---------- */
 .modal-veil {
   position: fixed;

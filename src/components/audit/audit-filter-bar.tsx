@@ -15,7 +15,7 @@ import {
   type AuditActor,
   type AuditFilterState,
 } from "@/lib/audit-filters";
-import { MIcon, Select } from "@/components/nk/ui";
+import { DateField, MIcon, Select } from "@/components/nk/ui";
 
 interface AuditFilterBarProps {
   filters: AuditFilterState;
@@ -39,7 +39,7 @@ export function AuditFilterBar({ filters, actors, disabled, onChange, onReset }:
       <div className="search-box" style={{ flex: 1, minWidth: 160 }}>
         <MIcon name="search" size={15} />
         <input
-          placeholder="Search change payloads… (Enter)"
+          placeholder="Search payloads — name, email, value… (Enter)"
           value={draft}
           disabled={disabled}
           onChange={(event) => setDraft(event.target.value)}
@@ -48,25 +48,21 @@ export function AuditFilterBar({ filters, actors, disabled, onChange, onReset }:
           }}
         />
       </div>
-      <input
-        type="date"
-        className="input"
-        style={{ width: "auto" }}
+      <DateField
         value={filters.from}
         max={filters.to || undefined}
         disabled={disabled}
-        onChange={(event) => set({ from: event.target.value })}
-        aria-label="From date"
+        onChange={(from) => set({ from })}
+        ariaLabel="From date"
+        placeholder="From date"
       />
-      <input
-        type="date"
-        className="input"
-        style={{ width: "auto" }}
+      <DateField
         value={filters.to}
         min={filters.from || undefined}
         disabled={disabled}
-        onChange={(event) => set({ to: event.target.value })}
-        aria-label="To date"
+        onChange={(to) => set({ to })}
+        ariaLabel="To date"
+        placeholder="To date"
       />
       <Select
         value={filters.actorId}

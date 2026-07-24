@@ -21,7 +21,7 @@ function makeClient(response: { data: unknown; error: unknown }) {
     eq: [] as Array<[string, unknown]>,
     gte: [] as Array<[string, unknown]>,
     lte: [] as Array<[string, unknown]>,
-    textSearch: [] as Array<[string, string, unknown]>,
+    ilike: [] as Array<[string, string]>,
   };
   const builder: Record<string, unknown> = {
     select: vi.fn((columns: string) => {
@@ -52,8 +52,8 @@ function makeClient(response: { data: unknown; error: unknown }) {
       calls.lte.push([column, value]);
       return builder;
     }),
-    textSearch: vi.fn((column: string, query: string, options: unknown) => {
-      calls.textSearch.push([column, query, options]);
+    ilike: vi.fn((column: string, pattern: string) => {
+      calls.ilike.push([column, pattern]);
       return builder;
     }),
     then: (resolve: (value: unknown) => void) => resolve(response),
@@ -219,34 +219,52 @@ describe("listEvents", () => {
     ]);
   });
 
-  // AUDIT-5: full-text search over the change payload.
-  it("issues a websearch full-text predicate on changes_fts when search is set", async () => {
+  // AUDIT-5: substring search over the change payload (migration 021).
+  it("issues a substring ILIKE predicate on changes_text when search is set", async () => {
     const { client, calls } = makeClient({ data: [], error: null });
 
-    await listEvents({ limit: 2, filters: { search: "CLOSED" } }, client);
+    await listEvents({ limit: 2, filters: { search: "jane" } }, client);
 
-    // Matches the changes_fts GIN index (migration 019): the 'simple' config and
-    // websearch type pair with websearch_to_tsquery('simple', …) server-side.
-    expect(calls.textSearch).toEqual([
-      ["changes_fts", "CLOSED", { type: "websearch", config: "simple" }],
-    ]);
+    // Trigram-indexed substring match: %fragment% is case-insensitive ILIKE.
+    expect(calls.ilike).toEqual([["changes_text", "%jane%"]]);
   });
 
   it("trims the search term before querying", async () => {
     const { client, calls } = makeClient({ data: [], error: null });
 
-    await listEvents({ limit: 2, filters: { search: "  CLOSED  " } }, client);
+    await listEvents({ limit: 2, filters: { search: "  jane  " } }, client);
 
-    expect(calls.textSearch).toEqual([
-      ["changes_fts", "CLOSED", { type: "websearch", config: "simple" }],
+    expect(calls.ilike).toEqual([["changes_text", "%jane%"]]);
+  });
+
+  it("splits the search on whitespace into ANDed substring fragments", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents({ limit: 2, filters: { search: "jane  123" } }, client);
+
+    // Each fragment is its own ILIKE; repeated same-column filters AND server-side.
+    expect(calls.ilike).toEqual([
+      ["changes_text", "%jane%"],
+      ["changes_text", "%123%"],
     ]);
   });
 
-  it("applies no full-text predicate when search is absent, empty, or blank", async () => {
+  it("escapes LIKE metacharacters so a fragment matches literally", async () => {
+    const { client, calls } = makeClient({ data: [], error: null });
+
+    await listEvents({ limit: 2, filters: { search: "50% a_b" } }, client);
+
+    expect(calls.ilike).toEqual([
+      ["changes_text", "%50\\%%"],
+      ["changes_text", "%a\\_b%"],
+    ]);
+  });
+
+  it("applies no search predicate when search is absent, empty, or blank", async () => {
     for (const search of [undefined, "", "   "]) {
       const { client, calls } = makeClient({ data: [], error: null });
       await listEvents({ limit: 2, filters: { search } }, client);
-      expect(calls.textSearch).toEqual([]);
+      expect(calls.ilike).toEqual([]);
     }
   });
 
@@ -257,19 +275,17 @@ describe("listEvents", () => {
       {
         limit: 2,
         cursor: { created_at: "2026-06-09T04:00:00Z", id: 4 },
-        filters: { entityType: "tickets", action: "update", search: "CLOSED" },
+        filters: { entityType: "tickets", action: "update", search: "jane" },
       },
       client,
     );
 
-    // Structured filters, full-text search, and the keyset predicate all AND.
+    // Structured filters, substring search, and the keyset predicate all AND.
     expect(calls.eq).toEqual([
       ["entity_type", "tickets"],
       ["action", "update"],
     ]);
-    expect(calls.textSearch).toEqual([
-      ["changes_fts", "CLOSED", { type: "websearch", config: "simple" }],
-    ]);
+    expect(calls.ilike).toEqual([["changes_text", "%jane%"]]);
     expect(calls.or).toEqual([
       "created_at.lt.2026-06-09T04:00:00Z,and(created_at.eq.2026-06-09T04:00:00Z,id.lt.4)",
     ]);

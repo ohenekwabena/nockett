@@ -699,6 +699,357 @@ export function InlineSelect({
   );
 }
 
+/* ---------- Date field (calendar popover with native-input value semantics) ----------
+ * A drop-in for `<input type="date">`, built from the same design-system pieces
+ * as `Select` (the `.input.sel-btn` trigger + a `Popover`). It talks the exact
+ * native contract — `value`/`onChange` are `YYYY-MM-DD` strings and `min`/`max`
+ * are the same bounds — so callers swap it in without changing their state. */
+const CAL_DOW = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const CAL_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** Parse a `YYYY-MM-DD` string into a *local* Date (no UTC-midnight day shift). */
+function isoToDate(iso?: string | null): Date | null {
+  if (!iso) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Serialise a Date to the `YYYY-MM-DD` a native date input would emit. */
+function dateToISO(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+/** Whole-day ordering, ignoring time-of-day: -1 / 0 / 1. */
+function compareDay(a: Date, b: Date): number {
+  const av = a.getFullYear() * 10000 + a.getMonth() * 100 + a.getDate();
+  const bv = b.getFullYear() * 10000 + b.getMonth() * 100 + b.getDate();
+  return av === bv ? 0 : av < bv ? -1 : 1;
+}
+
+function clampDay(date: Date, min: Date | null, max: Date | null): Date {
+  if (min && compareDay(date, min) < 0) return min;
+  if (max && compareDay(date, max) > 0) return max;
+  return date;
+}
+
+export function DateField({
+  value,
+  onChange,
+  min,
+  max,
+  placeholder = "dd/mm/yyyy",
+  disabled,
+  ariaLabel,
+  clearable = true,
+}: {
+  /** Bound value as `YYYY-MM-DD`, or empty — exactly like a native date input. */
+  value?: string;
+  onChange: (value: string) => void;
+  /** `YYYY-MM-DD` bounds, matching a native input's `min` / `max`. */
+  min?: string;
+  max?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  ariaLabel?: string;
+  clearable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"days" | "months" | "years">("days");
+  const btn = useRef<HTMLButtonElement>(null);
+  const focusedRef = useRef<HTMLButtonElement>(null);
+
+  const selected = isoToDate(value);
+  const minDate = isoToDate(min);
+  const maxDate = isoToDate(max);
+
+  // `cursor` = first day of the month on screen; `focus` = keyboard-highlighted day.
+  const [cursor, setCursor] = useState<Date>(() => selected ?? new Date());
+  const [focus, setFocus] = useState<Date>(() => clampDay(selected ?? new Date(), minDate, maxDate));
+
+  // Re-seat the calendar each time it opens (and follow external value changes).
+  useEffect(() => {
+    if (!open) return;
+    const seed = clampDay(isoToDate(value) ?? new Date(), isoToDate(min), isoToDate(max));
+    setCursor(new Date(seed.getFullYear(), seed.getMonth(), 1));
+    setFocus(seed);
+    setView("days");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Keep DOM focus on the highlighted day so keyboard nav reads like the native picker.
+  useEffect(() => {
+    if (open && view === "days") focusedRef.current?.focus();
+  }, [open, view, focus]);
+
+  const dayDisabled = (day: Date) =>
+    Boolean((minDate && compareDay(day, minDate) < 0) || (maxDate && compareDay(day, maxDate) > 0));
+
+  const commit = (day: Date) => {
+    if (dayDisabled(day)) return;
+    onChange(dateToISO(day));
+    setOpen(false);
+    btn.current?.focus();
+  };
+
+  const step = (delta: number) => {
+    if (view === "days") setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + delta, 1));
+    else if (view === "months") setCursor(new Date(cursor.getFullYear() + delta, cursor.getMonth(), 1));
+    else setCursor(new Date(cursor.getFullYear() + delta * 12, cursor.getMonth(), 1));
+  };
+
+  const onGridKey = (event: React.KeyboardEvent) => {
+    let next: Date | null = null;
+    const dow = (focus.getDay() + 6) % 7; // Monday-based weekday index
+    switch (event.key) {
+      case "ArrowLeft": next = addDays(focus, -1); break;
+      case "ArrowRight": next = addDays(focus, 1); break;
+      case "ArrowUp": next = addDays(focus, -7); break;
+      case "ArrowDown": next = addDays(focus, 7); break;
+      case "Home": next = addDays(focus, -dow); break;
+      case "End": next = addDays(focus, 6 - dow); break;
+      case "PageUp": next = new Date(focus.getFullYear(), focus.getMonth() - 1, focus.getDate()); break;
+      case "PageDown": next = new Date(focus.getFullYear(), focus.getMonth() + 1, focus.getDate()); break;
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        commit(focus);
+        return;
+      case "Escape":
+        event.preventDefault();
+        setOpen(false);
+        btn.current?.focus();
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const clamped = clampDay(next, minDate, maxDate);
+    setFocus(clamped);
+    setCursor(new Date(clamped.getFullYear(), clamped.getMonth(), 1));
+  };
+
+  const today = new Date();
+  const display = selected ? selected.toLocaleDateString("en-GB") : "";
+
+  // Prev/next only reach a wall in day view; out-of-range cells are disabled anyway.
+  const prevDisabled =
+    view === "days" && minDate != null &&
+    compareDay(new Date(cursor.getFullYear(), cursor.getMonth(), 0), minDate) < 0;
+  const nextDisabled =
+    view === "days" && maxDate != null &&
+    compareDay(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1), maxDate) > 0;
+
+  const decadeStart = cursor.getFullYear() - (cursor.getFullYear() % 12);
+  const title =
+    view === "days"
+      ? `${CAL_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`
+      : view === "months"
+        ? String(cursor.getFullYear())
+        : `${decadeStart} – ${decadeStart + 11}`;
+
+  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const lead = (first.getDay() + 6) % 7;
+  const gridStart = new Date(first.getFullYear(), first.getMonth(), 1 - lead);
+
+  return (
+    <span className="sel-wrap date-wrap">
+      <button
+        ref={btn}
+        type="button"
+        className="input sel-btn date-btn"
+        disabled={disabled}
+        aria-label={ariaLabel}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+          else if (!open && (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <span className={"sel-v" + (selected ? "" : " dim")}>{selected ? display : placeholder}</span>
+        <MIcon name="calendar_today" size={15} className="dim" />
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} fixed>
+        <div className="cal" role="dialog" aria-label={ariaLabel || "Choose date"}>
+          <div className="cal-head">
+            <button
+              type="button"
+              className="cal-nav"
+              onClick={() => step(-1)}
+              disabled={prevDisabled}
+              aria-label="Previous"
+            >
+              <MIcon name="chevron_left" size={18} />
+            </button>
+            <button
+              type="button"
+              className="cal-my"
+              onClick={() =>
+                setView(view === "days" ? "months" : view === "months" ? "years" : "days")
+              }
+            >
+              {title}
+              <MIcon name="expand_more" size={14} className="dim" />
+            </button>
+            <button
+              type="button"
+              className="cal-nav"
+              onClick={() => step(1)}
+              disabled={nextDisabled}
+              aria-label="Next"
+            >
+              <MIcon name="chevron_right" size={18} />
+            </button>
+          </div>
+
+          {view === "days" && (
+            <>
+              <div className="cal-grid cal-dow" aria-hidden="true">
+                {CAL_DOW.map((label) => (
+                  <span key={label} className="cal-dow-c">
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="cal-grid" role="grid" onKeyDown={onGridKey}>
+                {Array.from({ length: 42 }, (_, i) => {
+                  const day = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+                  const outside = day.getMonth() !== cursor.getMonth();
+                  const isSel = selected != null && compareDay(day, selected) === 0;
+                  const isFocus = compareDay(day, focus) === 0;
+                  const isToday = compareDay(day, today) === 0;
+                  const off = dayDisabled(day);
+                  return (
+                    <button
+                      key={i}
+                      ref={isFocus ? focusedRef : undefined}
+                      type="button"
+                      role="gridcell"
+                      tabIndex={isFocus ? 0 : -1}
+                      aria-selected={isSel}
+                      aria-current={isToday ? "date" : undefined}
+                      disabled={off}
+                      className={
+                        "cal-day" +
+                        (outside ? " out" : "") +
+                        (isSel ? " on" : "") +
+                        (isToday ? " today" : "") +
+                        (isFocus && !isSel ? " focus" : "")
+                      }
+                      onClick={() => commit(day)}
+                    >
+                      {day.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {view === "months" && (
+            <div className="cal-grid cal-months">
+              {CAL_MONTHS.map((name, idx) => {
+                const monthStart = new Date(cursor.getFullYear(), idx, 1);
+                const monthEnd = new Date(cursor.getFullYear(), idx + 1, 0);
+                const off = Boolean(
+                  (minDate && compareDay(monthEnd, minDate) < 0) ||
+                  (maxDate && compareDay(monthStart, maxDate) > 0)
+                );
+                const on =
+                  selected != null &&
+                  selected.getFullYear() === cursor.getFullYear() &&
+                  selected.getMonth() === idx;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    className={"cal-cell" + (on ? " on" : "")}
+                    disabled={off}
+                    onClick={() => {
+                      setCursor(new Date(cursor.getFullYear(), idx, 1));
+                      setView("days");
+                    }}
+                  >
+                    {name.slice(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {view === "years" && (
+            <div className="cal-grid cal-years">
+              {Array.from({ length: 12 }, (_, i) => {
+                const year = decadeStart + i;
+                const yearStart = new Date(year, 0, 1);
+                const yearEnd = new Date(year, 11, 31);
+                const off = Boolean(
+                  (minDate && compareDay(yearEnd, minDate) < 0) ||
+                  (maxDate && compareDay(yearStart, maxDate) > 0)
+                );
+                const on = selected != null && selected.getFullYear() === year;
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    className={"cal-cell" + (on ? " on" : "")}
+                    disabled={off}
+                    onClick={() => {
+                      setCursor(new Date(year, cursor.getMonth(), 1));
+                      setView("months");
+                    }}
+                  >
+                    {year}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="cal-foot">
+            <button
+              type="button"
+              className="cal-link"
+              disabled={dayDisabled(today)}
+              onClick={() => commit(today)}
+            >
+              Today
+            </button>
+            {clearable && selected && (
+              <button
+                type="button"
+                className="cal-link"
+                onClick={() => {
+                  onChange("");
+                  setOpen(false);
+                  btn.current?.focus();
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </Popover>
+    </span>
+  );
+}
+
 /* ---------- Formatting helpers ---------- */
 export function fmtDate(value?: string | Date | null): string {
   if (!value) return "—";

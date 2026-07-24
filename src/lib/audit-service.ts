@@ -15,16 +15,17 @@ import type { Tables } from "@/types/database.types";
  */
 
 /**
- * One row of the Audit Log. Excludes `changes_fts`, the internal tsvector that
- * backs full-text search (AUDIT-5, migration 019): it is a search artifact, not
- * domain data, so the read seam neither selects it nor exposes it to callers.
+ * One row of the Audit Log. Excludes `changes_text`, the internal text mirror of
+ * `changes` that backs substring search (AUDIT-5, migration 021): it is a search
+ * artifact, not domain data, so the read seam neither selects it nor exposes it
+ * to callers. (`changes_fts` from migration 019 was dropped by 021.)
  */
-export type AuditEvent = Omit<Tables<"audit_log">, "changes_fts">;
+export type AuditEvent = Omit<Tables<"audit_log">, "changes_fts" | "changes_text">;
 
 /**
- * The Audit Event columns to read — every audit_log column EXCEPT `changes_fts`
- * (the search vector from migration 019). Selecting these by name keeps the
- * tsvector off the wire and out of {@link AuditEvent}.
+ * The Audit Event columns to read — every audit_log column EXCEPT `changes_text`
+ * (the trigram-indexed search mirror from migration 021). Selecting these by name
+ * keeps the mirror off the wire and out of {@link AuditEvent}.
  */
 const AUDIT_COLUMNS =
   "id, txid, entity_type, entity_id, action, actor_id, actor_email, actor_name, changes, created_at";
@@ -58,12 +59,15 @@ export interface AuditFilters {
   /** Exact action: one of {@link AUDIT_ACTIONS}. */
   action?: string | null;
   /**
-   * Free-text WORD search over the change payload (AUDIT-5). Matched against the
-   * GIN-indexed `changes_fts` tsvector with `websearch_to_tsquery('simple', …)`
-   * (migration 019): "CLOSED" finds every Audit Event whose payload contains that
-   * word, and multi-word / "quoted phrase" / -excluded terms follow web-search
-   * syntax. ANDs with the other predicates and the keyset cursor; trimmed, so an
-   * empty/blank value is no constraint.
+   * Free-text SUBSTRING search over the change payload (AUDIT-5). Matched against
+   * the trigram-indexed `changes_text` mirror with `ILIKE '%term%'` (migration
+   * 021): "jane" finds every Audit Event whose payload contains that fragment
+   * (e.g. "jane.doe@acme.com"), case-insensitively — partial emails, bare ticket
+   * numbers, and partial names all hit, unlike the whole-word full-text it
+   * replaced. Whitespace splits the box into fragments that each AND (so "jane
+   * closed" needs both substrings, order-independent). ANDs with the other
+   * predicates and the keyset cursor; trimmed, so an empty/blank value is no
+   * constraint.
    */
   search?: string | null;
 }
@@ -126,6 +130,16 @@ function defaultClient(): SupabaseClient {
 }
 
 /**
+ * Escape a user fragment so LIKE/ILIKE metacharacters match literally. `%` and
+ * `_` are LIKE wildcards and `\` is the default escape char, so a fragment like
+ * "50%" or "a_b" searches for that exact text rather than a pattern. The fragment
+ * is then wrapped in %…% by the caller for a substring match.
+ */
+function escapeLikePattern(fragment: string): string {
+  return fragment.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+/**
  * List Audit Events newest-first with keyset pagination over (created_at, id).
  *
  * Fetches one row beyond `limit` to decide whether a further page exists, so the
@@ -155,13 +169,15 @@ export async function listEvents(
   if (filters?.entityType) query = query.eq("entity_type", filters.entityType);
   if (filters?.action) query = query.eq("action", filters.action);
 
-  // Full-text search over the change payload (AUDIT-5). websearch_to_tsquery on
-  // the 'simple'-config changes_fts vector hits the GIN index (migration 019);
-  // like the predicates above it ANDs with the keyset cursor. Trim so a blank box
-  // is no constraint (and never an all-matching empty tsquery).
-  const search = filters?.search?.trim();
-  if (search) {
-    query = query.textSearch("changes_fts", search, { type: "websearch", config: "simple" });
+  // Substring search over the change payload (AUDIT-5). Each whitespace-separated
+  // fragment becomes a case-insensitive `changes_text ILIKE '%fragment%'` on the
+  // trigram-indexed mirror (migration 021); repeated same-column filters AND in
+  // PostgREST, so all fragments must be present (order-independent), and they ALSO
+  // AND with the structured predicates and the keyset cursor. LIKE metacharacters
+  // in the fragment are escaped so they match literally. Trim/split so a blank box
+  // is no constraint.
+  for (const fragment of filters?.search?.trim().split(/\s+/).filter(Boolean) ?? []) {
+    query = query.ilike("changes_text", `%${escapeLikePattern(fragment)}%`);
   }
 
   if (cursor) {
