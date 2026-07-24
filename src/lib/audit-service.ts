@@ -91,17 +91,20 @@ export const DEFAULT_AUDIT_PAGE_SIZE = 50;
 
 /**
  * The actions an Audit Event can record — the `audit_log.action` CHECK
- * constraint (migration 017). Drives the action filter dropdown.
+ * constraint (migrations 017 + 022). Drives the action filter dropdown. `login`
+ * is captured by the trigger on `auth.sessions` (migration 022, AUDIT-7).
  */
-export const AUDIT_ACTIONS = ["insert", "update", "delete"] as const;
+export const AUDIT_ACTIONS = ["insert", "update", "delete", "login"] as const;
 
 /**
  * The audited entity types (table names) the entity filter can target, in a
- * human-sensible order. Mirrors the triggers wired in migrations 017 (`tickets`)
- * and 018 (the rest); if a new table is audited, add it here so it becomes
- * filterable. Unlisted types still appear in the log — just not in this dropdown.
+ * human-sensible order. Mirrors the triggers wired in migrations 017 (`tickets`),
+ * 018 (the rest), and 022 (`sessions`, i.e. sign-ins); if a new table is audited,
+ * add it here so it becomes filterable. Unlisted types still appear in the log —
+ * just not in this dropdown.
  */
 export const AUDIT_ENTITY_TYPES = [
+  "sessions",
   "tickets",
   "ticket_comments",
   "ticket_notes",

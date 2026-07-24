@@ -16,6 +16,7 @@ export const ACTION_UI: Record<string, { label: string; cls: string; icon: strin
   insert: { label: "Insert", cls: "act-ins", icon: "add_circle" },
   update: { label: "Update", cls: "act-upd", icon: "edit" },
   delete: { label: "Delete", cls: "act-del", icon: "delete" },
+  login: { label: "Login", cls: "act-login", icon: "login" },
 };
 
 export function actionUi(action: string | null) {
@@ -122,6 +123,13 @@ export function eventSummary(event: AuditEvent): string {
     }
     return null;
   };
+
+  // A sign-in (migration 022) captures no entity, only the session context; read
+  // its ip out of the payload for a one-line "signed in from …".
+  if (event.action === "login") {
+    const ip = pick("ip");
+    return ip ? `signed in from ${ip}` : "signed in";
+  }
 
   if (event.action === "update") {
     const parts = entries
